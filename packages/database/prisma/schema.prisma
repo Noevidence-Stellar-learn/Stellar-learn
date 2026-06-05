@@ -1,0 +1,164 @@
+// stellar-learn database schema
+// Run `npm run db:generate` after changes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  username  String   @unique
+  email     String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Game state
+  characterId String  @default("warrior") // selected character skin
+  currentXP   Int     @default(0)
+  level       Int     @default(1)
+  streakDays  Int     @default(0)
+  lastActiveAt DateTime?
+
+  // Stellar testnet account (generated on first play)
+  stellarPublicKey String? @unique
+
+  // Relations
+  progress     Progress[]
+  achievements UserAchievement[]
+  submissions  ChallengeSubmission[]
+
+  @@map("users")
+}
+
+// ─── Curriculum ───────────────────────────────────────────────────────────────
+
+model World {
+  id          String  @id // e.g. "world-1-origin-plains"
+  slug        String  @unique
+  title       String
+  description String
+  theme       String  // "forest" | "castle" | "dungeon" | "mountain" | "castle-dungeon" | "citadel"
+  order       Int
+  isLocked    Boolean @default(true)
+  xpReward    Int     @default(100)
+
+  quests Quest[]
+
+  @@map("worlds")
+}
+
+model Quest {
+  id          String  @id @default(cuid())
+  worldId     String
+  slug        String  @unique
+  title       String
+  description String
+  type        QuestType
+  order       Int
+  xpReward    Int     @default(50)
+  content     Json    // lesson content, quiz questions, challenge spec
+
+  world       World    @relation(fields: [worldId], references: [id])
+  progress    Progress[]
+  submissions ChallengeSubmission[]
+
+  @@map("quests")
+}
+
+enum QuestType {
+  LESSON      // guided reading/interactive lesson
+  QUIZ        // multiple choice / drag-drop
+  CHALLENGE   // live coding on Stellar testnet
+  BOSS        // final world challenge
+}
+
+// ─── Player Progress ──────────────────────────────────────────────────────────
+
+model Progress {
+  id          String         @id @default(cuid())
+  userId      String
+  questId     String
+  status      ProgressStatus @default(NOT_STARTED)
+  xpEarned    Int            @default(0)
+  completedAt DateTime?
+  attempts    Int            @default(0)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id])
+
+  @@unique([userId, questId])
+  @@map("progress")
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+model Achievement {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  title       String
+  description String
+  iconUrl     String
+  xpReward    Int     @default(25)
+  rarity      AchievementRarity @default(COMMON)
+
+  // Trigger conditions stored as JSON rule
+  // e.g. { "type": "quest_complete", "questSlug": "create-account" }
+  triggerRule Json
+
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+enum AchievementRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+// ─── Challenge Submissions ────────────────────────────────────────────────────
+
+model ChallengeSubmission {
+  id              String   @id @default(cuid())
+  userId          String
+  questId         String
+  submittedCode   String
+  txHash          String?  // Stellar testnet transaction hash if applicable
+  passed          Boolean
+  feedback        String?
+  submittedAt     DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id])
+
+  @@map("challenge_submissions")
+}

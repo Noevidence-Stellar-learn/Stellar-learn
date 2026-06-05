@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', system-ui, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0d0d2b;
+    color: #e8d5b7;
+    font-family: var(--font-inter);
+  }
+
+  /* Pixel art rendering */
+  .pixel-art {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1a1a2e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #7b5ea7;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  /* Game canvas container */
+  .game-canvas-container {
+    @apply relative w-full overflow-hidden;
+    background: #0d0d2b;
+  }
+
+  /* Quest panel overlay */
+  .quest-panel {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm;
+  }
+
+  .quest-panel-inner {
+    @apply relative max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-brand-purple/50 bg-brand-dark-2 p-8 shadow-2xl;
+  }
+
+  /* XP bar */
+  .xp-bar {
+    @apply h-3 overflow-hidden rounded-full bg-brand-dark-3;
+  }
+
+  .xp-bar-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-brand-purple to-brand-purple-light transition-all duration-700;
+  }
+
+  /* Achievement badge */
+  .achievement-badge {
+    @apply flex flex-col items-center gap-2 rounded-lg border border-brand-purple/30 bg-brand-dark-3 p-4;
+  }
+
+  /* Pixel button */
+  .btn-pixel {
+    @apply cursor-pointer border-b-4 border-brand-purple bg-brand-purple-light px-6 py-3 font-pixel text-xs text-brand-dark transition-all
+           hover:translate-y-0.5 hover:border-b-2 active:translate-y-1 active:border-b-0;
+  }
+
+  /* Code block styling */
+  .code-block {
+    @apply overflow-x-auto rounded-lg border border-brand-purple/20 bg-[#0d1117] p-4 font-mono text-sm;
+  }
+}
