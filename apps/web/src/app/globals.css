@@ -467,7 +467,16 @@
   }
   .pixel-qopt.correct { box-shadow: inset 0 0 0 2px #46c93a; color: #bfffaa; }
   .pixel-qopt.correct .mk { background: #2d8a22; color: #fff; }
-  .pixel-qopt.wrong { box-shadow: inset 0 0 0 2px #d23b3b; color: #ffb3b3; }
+  .pixel-qopt.wrong {
+    box-shadow: inset 0 0 0 2px #d23b3b;
+    color: #ffb3b3;
+    animation: pixel-shake 0.25s steps(2) 2;
+  }
+  @keyframes pixel-shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-5px); }
+    75%      { transform: translateX(5px); }
+  }
 
   /* ---- Pixel progress bar ---- */
   .pixel-progress {
