@@ -18,6 +18,7 @@ interface WorldMapProps {
 export function WorldMap({ onBack, onEnterWorld }: WorldMapProps) {
   const [selected, setSelected] = useState(1)
   const w = WORLDS[selected]
+  if (!w) return null
   const cleared = w.state === 'done'
   const open = w.state !== 'locked'
 
@@ -51,6 +52,7 @@ export function WorldMap({ onBack, onEnterWorld }: WorldMapProps) {
         >
           {WORLDS.slice(0, -1).map((a, i) => {
             const b = WORLDS[i + 1]
+            if (!b) return null
             const done = a.state === 'done'
             return (
               <line
@@ -103,7 +105,7 @@ export function WorldMap({ onBack, onEnterWorld }: WorldMapProps) {
               ☠ BOSS · {w.boss.toUpperCase()}
             </div>
             {open ? (
-              <PixelButton variant="gold" sm block onClick={() => onEnterWorld?.(i)}>
+              <PixelButton variant="gold" sm block onClick={() => onEnterWorld?.(selected)}>
                 {cleared ? 'REPLAY WORLD ▶' : 'ENTER WORLD ▶'}
               </PixelButton>
             ) : (

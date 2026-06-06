@@ -66,7 +66,7 @@ export function QuestModal({
 
   const pick = (i: number) => {
     if (solved) return
-    if (options[i].correct) {
+    if (options[i]?.correct) {
       setPicked(i)
       setSolved(true)
     } else {

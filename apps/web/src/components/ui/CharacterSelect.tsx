@@ -19,6 +19,7 @@ interface CharacterSelectProps {
 export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
   const [selected, setSelected] = useState(0)
   const char = CHARACTERS[selected]
+  if (!char) return null
 
   return (
     <section className="absolute inset-0 flex flex-col">
