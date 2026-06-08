@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { TILE_SIZE } from '../config'
+import { ART_ASSETS_AVAILABLE, TILE_SIZE } from '../config'
 
 /**
  * LevelScene — the main 2D platformer level.
@@ -24,6 +24,10 @@ export class LevelScene extends Phaser.Scene {
   }
 
   preload() {
+    // Skip art loads until the asset drop lands — otherwise these 404 and the
+    // missing character spritesheet produces empty animations that crash on play.
+    if (!ART_ASSETS_AVAILABLE) return
+
     const characterId = this.registry.get('characterId') as string
     this.load.spritesheet(`char-${characterId}`, `/assets/sprites/characters/${characterId}.png`, {
       frameWidth: 128,
@@ -36,6 +40,7 @@ export class LevelScene extends Phaser.Scene {
   }
 
   create() {
+    this.ensureCharacterTexture()
     this.createAnimations()
     this.createMap()
     this.createPlayer()
@@ -43,6 +48,30 @@ export class LevelScene extends Phaser.Scene {
     this.setupCamera()
     this.setupInput()
     this.createHUD()
+  }
+
+  /**
+   * Guarantee a usable character texture. When the real spritesheet didn't load
+   * (no art yet, or a 404), generate a single-frame placeholder box so the
+   * player sprite still renders instead of Phaser's missing-texture marker.
+   */
+  private ensureCharacterTexture() {
+    const characterId = this.registry.get('characterId') as string
+    const key = `char-${characterId}`
+    if (this.textures.exists(key)) return
+
+    const size = 128
+    const g = this.make.graphics({ x: 0, y: 0 }, false)
+    g.fillStyle(0x7b5ea7, 1)
+    g.fillRect(0, 0, size, size)
+    g.lineStyle(6, 0x07071a, 1)
+    g.strokeRect(3, 3, size - 6, size - 6)
+    // simple eyes so the box reads as a character
+    g.fillStyle(0x07071a, 1)
+    g.fillRect(size * 0.32, size * 0.34, size * 0.12, size * 0.12)
+    g.fillRect(size * 0.56, size * 0.34, size * 0.12, size * 0.12)
+    g.generateTexture(key, size, size)
+    g.destroy()
   }
 
   update() {
@@ -54,6 +83,11 @@ export class LevelScene extends Phaser.Scene {
   private createAnimations() {
     const characterId = this.registry.get('characterId') as string
     const key = `char-${characterId}`
+
+    // A multi-frame spritesheet is required. With only a single-frame
+    // placeholder (no art yet) we skip animations and show the static sprite —
+    // creating zero-frame animations would crash Phaser when played.
+    if (!this.textures.exists(key) || this.textures.get(key).frameTotal <= 1) return
 
     const anims = [
       { key: 'idle', frames: { start: 0, end: 3 }, repeat: -1, frameRate: 6 },
@@ -76,6 +110,13 @@ export class LevelScene extends Phaser.Scene {
 
   private createMap() {
     const worldId = this.registry.get('worldId') as string
+
+    // No tilemap loaded (no art yet) — use the fallback ground instead of
+    // calling make.tilemap on a missing key, which logs "No map data found".
+    if (!this.cache.tilemap.has(`map-${worldId}`)) {
+      this.createFallbackGround()
+      return
+    }
 
     try {
       const map = this.make.tilemap({ key: `map-${worldId}` })
@@ -206,6 +247,11 @@ export class LevelScene extends Phaser.Scene {
 
   private updateAnimations() {
     const characterId = this.registry.get('characterId') as string
+
+    // No animations were created (placeholder/missing spritesheet) — playing a
+    // non-existent / zero-frame animation throws in Phaser, so bail early.
+    if (!this.anims.exists(`${characterId}-idle`)) return
+
     const onGround = this.player.body.blocked.down
     const vx = this.player.body.velocity.x
     const vy = this.player.body.velocity.y

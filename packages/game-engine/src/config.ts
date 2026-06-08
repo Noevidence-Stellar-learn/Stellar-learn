@@ -4,6 +4,16 @@ export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
 export const TILE_SIZE = 64
 
+/**
+ * Whether real pixel-art assets have been added under `apps/web/public/assets`.
+ *
+ * Until the art drop lands, the files don't exist, so requesting them produces
+ * 404s and (for character spritesheets) empty animations that crash Phaser.
+ * While this is `false`, scenes skip those network loads and render generated
+ * placeholder textures instead. Flip to `true` once the PNG/JSON assets exist.
+ */
+export const ART_ASSETS_AVAILABLE = false
+
 export const DEFAULT_PHASER_CONFIG: Omit<Phaser.Types.Core.GameConfig, 'scene' | 'parent'> = {
   type: Phaser.AUTO,
   width: GAME_WIDTH,

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { ASSET_KEYS } from '../config'
+import { ART_ASSETS_AVAILABLE, ASSET_KEYS } from '../config'
 
 /**
  * BootScene — first scene loaded.
@@ -13,6 +13,9 @@ export class BootScene extends Phaser.Scene {
   preload() {
     // Progress bar while assets load
     this.createLoadingBar()
+
+    // Skip art loads until the asset drop lands — otherwise these 404.
+    if (!ART_ASSETS_AVAILABLE) return
 
     // UI assets (always needed)
     this.load.image(ASSET_KEYS.UI_XP_BAR, '/assets/ui/xp-bar.png')
@@ -30,7 +33,13 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('WorldMapScene')
+    // Boot into whichever scene the host requested (set on the game registry
+    // before boot). Defaults to the world map. This prevents the level page
+    // from starting WorldMapScene *and* LevelScene at once — which left the
+    // map constellation rendering, unclickable, behind the level.
+    const next = (this.registry.get('bootScene') as string | undefined) ?? 'WorldMapScene'
+    const data = (this.registry.get('bootData') as object | undefined) ?? {}
+    this.scene.start(next, data)
   }
 
   private createLoadingBar() {
