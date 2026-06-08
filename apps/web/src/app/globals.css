@@ -40,6 +40,7 @@
     background-color: #0d0d2b;
     color: #e8d5b7;
     font-family: var(--font-inter);
+    -webkit-font-smoothing: none;
   }
 
   /* Pixel art rendering */
@@ -243,12 +244,12 @@
   /* ---- Stone-tablet menu button ---- */
   .pixel-tablet {
     font-family: var(--font-pix, 'Press Start 2P', monospace);
-    font-size: 14px;
+    font-size: clamp(11px, 2.4vw, 14px);
     color: var(--gold);
     background: linear-gradient(#3a3a52, #2a2a40);
     border: 3px solid var(--ink);
-    padding: 18px 22px;
-    width: 340px;
+    padding: clamp(14px, 3.4vw, 18px) clamp(16px, 4vw, 22px);
+    width: min(340px, 86vw);
     cursor: pointer;
     text-align: left;
     letter-spacing: 1px;
@@ -343,7 +344,7 @@
   /* ---- HUD stat bar ---- */
   .pixel-statbar {
     position: relative;
-    width: 300px;
+    width: min(300px, 56vw);
     height: 26px;
     background: var(--ink);
     border: 3px solid var(--ink);
@@ -503,3 +504,37 @@
 .pixel-code .s { color: var(--teal); }
 .pixel-code .c { color: #5d6a99; }
 .pixel-code .f { color: var(--gold-br); }
+
+/* =====================================================================
+   RESPONSIVE DISPLAY TYPE
+   Fluid pixel headings that scale smoothly from phone → desktop so the
+   game UI reflows instead of being shrunk by a fixed-canvas transform.
+   ===================================================================== */
+.disp-title {
+  font-size: clamp(2.25rem, 11vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: clamp(2px, 1vw, 4px);
+}
+.disp-head {
+  font-size: clamp(1rem, 4.2vw, 1.375rem); /* 16px → 22px */
+  letter-spacing: clamp(1px, 0.6vw, 2px);
+}
+.disp-sub {
+  font-size: clamp(1rem, 4vw, 1.375rem);
+}
+
+/* The fluid game viewport: fills its parent, never letterboxes. */
+.game-viewport {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--space, #0d0d2b);
+}
+
+/* Thin horizontal scroller for the screen-switcher nav on small screens. */
+.nav-scroll {
+  scrollbar-width: none;
+}
+.nav-scroll::-webkit-scrollbar { display: none; }

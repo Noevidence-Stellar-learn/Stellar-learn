@@ -88,21 +88,21 @@ export function QuestModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="absolute inset-0 z-30 flex items-center justify-center"
+          className="absolute inset-0 z-30 flex items-center justify-center p-3 sm:p-6"
           style={{ background: 'rgba(7,7,26,.72)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="flex w-[720px] flex-col"
-            style={{ maxHeight: 600 }}
+            className="flex w-[min(720px,94vw)] flex-col"
+            style={{ maxHeight: 'min(600px, 90%)' }}
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.92, opacity: 0 }}
             transition={{ duration: 0.18 }}
           >
-            <PixelPanel ornate className="relative flex flex-col p-0" style={{ maxHeight: 600 }}>
+            <PixelPanel ornate className="relative flex min-h-0 flex-col p-0" style={{ maxHeight: 'min(600px, 90vh)' }}>
               <button
                 type="button"
                 onClick={handleClose}
@@ -121,7 +121,7 @@ export function QuestModal({
                 <span className="relative z-[1]">{title}</span>
               </PixelStrip>
 
-              <div className="pixel-scroll flex flex-col gap-4 overflow-auto p-[22px_24px]">
+              <div className="pixel-scroll flex min-h-0 flex-col gap-4 overflow-auto p-4 sm:p-[22px_24px]">
                 <SpriteSlot
                   className="flex h-[110px]"
                   tint="#ffd700"
@@ -181,15 +181,15 @@ export function QuestModal({
 
               {/* footer */}
               <div
-                className="flex items-center"
+                className="flex shrink-0 items-center"
                 style={{ background: '#1a1a2e', borderTop: '4px solid #07071a', padding: '14px 18px' }}
               >
                 <span className="pixel-constellation" />
-                <div className="flex flex-1 items-center justify-between gap-[14px]">
-                  <div className="flex items-center gap-[10px] font-pixel text-[10px] text-brand-gold-bright">
+                <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-[14px]">
+                  <div className="flex items-center gap-[10px] font-pixel text-[9px] leading-[1.6] text-brand-gold-bright sm:text-[10px]">
                     REWARD <Coin scale={0.7} /> {reward ?? '+50 XP · 🔑 ACCOUNT BADGE'}
                   </div>
-                  <PixelButton variant="gold" disabled={!solved} onClick={complete}>
+                  <PixelButton variant="gold" sm disabled={!solved} onClick={complete}>
                     COMPLETE ✓
                   </PixelButton>
                 </div>

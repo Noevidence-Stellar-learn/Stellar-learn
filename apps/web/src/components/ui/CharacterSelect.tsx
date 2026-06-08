@@ -15,6 +15,8 @@ interface CharacterSelectProps {
 /**
  * CharacterSelect — 6 colour-coded hero frames with locked states, plus a
  * detail panel showing the selected builder's lore and animation set.
+ * Responsive: the grid reflows 2→3→6 columns and the detail panel stacks
+ * vertically on narrow screens.
  */
 export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
   const [selected, setSelected] = useState(0)
@@ -22,16 +24,16 @@ export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
   if (!char) return null
 
   return (
-    <section className="absolute inset-0 flex flex-col">
-      <div className="relative z-[2] flex min-h-0 flex-1 flex-col px-14 py-12">
+    <section className="absolute inset-0 flex flex-col overflow-y-auto">
+      <div className="relative z-[2] flex min-h-0 flex-1 flex-col px-4 py-6 sm:px-8 lg:px-14 lg:py-12">
         {/* header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-2">
-            <span className="font-pixel text-[9px] tracking-[3px] text-stellar-teal">
+            <span className="font-pixel text-[8px] tracking-[3px] text-stellar-teal sm:text-[9px]">
               CHOOSE YOUR PATH
             </span>
             <span
-              className="font-pixel text-[22px] tracking-[2px] text-brand-gold-bright"
+              className="disp-head font-pixel text-brand-gold-bright"
               style={{ textShadow: '3px 3px 0 #07071a, 0 0 16px rgba(255,215,0,.3)' }}
             >
               CHOOSE YOUR BUILDER
@@ -43,7 +45,7 @@ export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
         </div>
 
         {/* character grid */}
-        <div className="mt-2 grid grid-cols-6 gap-[14px]">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-[14px] lg:grid-cols-6">
           {CHARACTERS.map((c, i) => {
             const isSel = i === selected
             return (
@@ -90,25 +92,27 @@ export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
         </div>
 
         {/* detail panel */}
-        <PixelPanel ornate className="mt-[22px] flex items-stretch gap-6 p-0">
-          <div className="flex w-full gap-6 p-[18px]">
+        <PixelPanel ornate className="mt-5 flex p-0 lg:mt-[22px]">
+          <div className="flex w-full flex-col gap-5 p-4 sm:p-[18px] lg:flex-row lg:gap-6">
             <SpriteSlot
               key={char.id}
-              className="w-[230px] flex-none"
+              className="h-[180px] w-full flex-none lg:h-auto lg:w-[230px]"
               tint={char.col}
               label={char.name}
               dim={`char-${char.id}_idle · 128²`}
             />
             <div className="flex flex-1 flex-col gap-[14px] px-1 py-[6px]">
               <h2
-                className="font-pixel text-[20px] tracking-[2px] text-brand-gold-bright"
+                className="font-pixel text-[16px] tracking-[2px] text-brand-gold-bright sm:text-[20px]"
                 style={{ textShadow: '2px 2px 0 #07071a' }}
               >
                 {char.name}{' '}
-                <span className="text-[12px] text-brand-purple-light">· {char.arch}</span>
+                <span className="text-[11px] text-brand-purple-light sm:text-[12px]">
+                  · {char.arch}
+                </span>
               </h2>
               <div
-                className="inline-flex items-center gap-2 self-start px-3 py-[7px] font-pixel text-[9px] text-stellar-teal"
+                className="inline-flex items-center gap-2 self-start px-3 py-[7px] font-pixel text-[8px] leading-[1.6] text-stellar-teal sm:text-[9px]"
                 style={{
                   background: '#141436',
                   border: '2px solid #07071a',
@@ -117,8 +121,10 @@ export function CharacterSelect({ onBack, onEmbark }: CharacterSelectProps) {
               >
                 ⬡ REPRESENTS: {char.represents}
               </div>
-              <p className="font-read text-[20px] leading-[1.35] text-brand-gold">{char.blurb}</p>
-              <div className="font-pixel text-[9px] tracking-[3px] text-brand-gold">
+              <p className="font-read text-[18px] leading-[1.35] text-brand-gold sm:text-[20px]">
+                {char.blurb}
+              </p>
+              <div className="font-pixel text-[8px] tracking-[3px] text-brand-gold sm:text-[9px]">
                 ANIMATION SET
               </div>
               <div className="flex flex-wrap gap-2">

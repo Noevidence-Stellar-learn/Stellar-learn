@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { StarField } from './StarField'
 import { MainMenu } from './MainMenu'
@@ -22,29 +22,18 @@ const SCREENS: { id: Screen; label: string }[] = [
 ]
 
 /**
- * GameShell — recreates the design prototype: a fixed 1280×720 pixel "game"
- * canvas scaled to fit the viewport, a cosmic backdrop, the five screens
- * wired into a flow, plus the quest modal and a boss-HUD toggle. The dark
- * prototype bar below the canvas (chrome, not game UI) jumps between screens.
+ * GameShell — the Stellar Learn pixel game-UI shell.
+ *
+ * Unlike the original handoff prototype (a fixed 1280×720 stage scaled with
+ * `transform`), this is a *fluid* responsive layout: the cosmic viewport fills
+ * the screen at any size and every screen reflows — from phones to ultrawide —
+ * with no letterboxing and no tiny-thumbnail scaling.
  */
 export function GameShell() {
   const [screen, setScreen] = useState<Screen>('menu')
   const [questOpen, setQuestOpen] = useState(false)
   const [boss, setBoss] = useState(false)
   const [xp, setXp] = useState(64)
-  const [scale, setScale] = useState(1)
-  const gameRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const fit = () => {
-      const pad = 24
-      const barH = 70
-      setScale(Math.min((window.innerWidth - pad) / 1280, (window.innerHeight - pad - barH) / 720))
-    }
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [])
 
   const goto = (s: Screen) => {
     setScreen(s)
@@ -63,26 +52,35 @@ export function GameShell() {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center"
+      className="fixed inset-0 flex flex-col"
       style={{
         background:
           'radial-gradient(1200px 700px at 50% -10%, #1d1640 0%, transparent 60%),' +
           'radial-gradient(900px 600px at 80% 110%, #16243f 0%, transparent 55%), #07071a',
       }}
     >
-      <div
-        ref={gameRef}
-        className="relative overflow-hidden"
-        style={{
-          width: 1280,
-          height: 720,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          background: '#0d0d2b',
-          boxShadow: '0 0 0 4px #07071a, 0 0 0 8px #20203c, 0 24px 80px rgba(0,0,0,.6)',
-          imageRendering: 'pixelated',
-        }}
+      {/* ---- top screen-switcher nav (chrome, not part of the game) ---- */}
+      <nav
+        className="nav-scroll z-50 flex shrink-0 items-center gap-[6px] overflow-x-auto px-3 py-[10px] font-pixel sm:gap-2 sm:px-4"
+        style={{ background: '#0a0a18', borderBottom: '1px solid #2a2a46' }}
       >
+        <span className="hidden shrink-0 px-[6px] text-[7px] text-[#6a6a8a] sm:inline">SCREENS</span>
+        {SCREENS.map((s) => (
+          <ProtoBtn key={s.id} active={screen === s.id} onClick={() => goto(s.id)}>
+            {s.label}
+          </ProtoBtn>
+        ))}
+        <span className="mx-[2px] h-[22px] w-px shrink-0 bg-[#2a2a46]" />
+        <ProtoBtn active={questOpen} accent onClick={() => (questOpen ? setQuestOpen(false) : openQuest())}>
+          QUEST
+        </ProtoBtn>
+        <ProtoBtn active={boss} accent onClick={toggleBoss}>
+          BOSS HUD
+        </ProtoBtn>
+      </nav>
+
+      {/* ---- the fluid game viewport ---- */}
+      <div className="game-viewport">
         <StarField />
 
         <AnimatePresence mode="wait">
@@ -123,26 +121,6 @@ export function GameShell() {
           onComplete={() => setXp((v) => Math.min(100, v + 12))}
         />
       </div>
-
-      {/* prototype bar — chrome, not part of the game */}
-      <nav
-        className="fixed bottom-[14px] left-1/2 z-50 flex -translate-x-1/2 items-center gap-[6px] rounded-[10px] px-2 py-[7px] font-pixel"
-        style={{ background: '#0a0a18', border: '1px solid #2a2a46', boxShadow: '0 10px 40px rgba(0,0,0,.6)' }}
-      >
-        <span className="px-[6px] text-[7px] text-[#6a6a8a]">SCREENS</span>
-        {SCREENS.map((s) => (
-          <ProtoBtn key={s.id} active={screen === s.id} onClick={() => goto(s.id)}>
-            {s.label}
-          </ProtoBtn>
-        ))}
-        <span className="mx-[2px] h-[22px] w-px bg-[#2a2a46]" />
-        <ProtoBtn active={questOpen} accent onClick={() => (questOpen ? setQuestOpen(false) : openQuest())}>
-          QUEST MODAL
-        </ProtoBtn>
-        <ProtoBtn active={boss} accent onClick={toggleBoss}>
-          BOSS HUD
-        </ProtoBtn>
-      </nav>
     </div>
   )
 }
@@ -159,7 +137,7 @@ function ProtoBtn({
   onClick?: () => void
 }) {
   const base =
-    'cursor-pointer rounded-[6px] px-[10px] py-2 font-pixel text-[8px] tracking-[.5px] whitespace-nowrap transition-colors'
+    'shrink-0 cursor-pointer rounded-[6px] px-[10px] py-2 font-pixel text-[8px] tracking-[.5px] whitespace-nowrap transition-colors'
   const style: React.CSSProperties = active
     ? accent
       ? { background: '#00bcd4', color: '#07071a', border: '1px solid #7df0ff' }

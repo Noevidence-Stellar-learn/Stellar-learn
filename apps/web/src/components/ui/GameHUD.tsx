@@ -24,7 +24,7 @@ interface GameHUDProps {
  * GameHUD — the heads-up display overlay that sits above the game canvas:
  * XP bar with liquid teal fill, top-right info chips, an interaction prompt,
  * and a toggleable boss nameplate + HP bar. Pointer-events pass through the
- * empty regions to the game underneath.
+ * empty regions to the game underneath. Fluid across screen sizes.
  */
 export function GameHUD({
   xp = 64,
@@ -44,7 +44,7 @@ export function GameHUD({
   return (
     <div className="pointer-events-none absolute inset-0 z-[5]">
       {/* left stat bars */}
-      <div className="absolute left-[18px] top-[18px] flex flex-col gap-2 [&>*]:pointer-events-auto">
+      <div className="absolute left-9 top-3 flex flex-col gap-2 sm:left-[42px] sm:top-[18px] [&>*]:pointer-events-auto">
         <div className="pixel-statbar">
           <span className="icon">⭐</span>
           <span className="fill" style={{ width: `${xp}%` }} />
@@ -61,11 +61,12 @@ export function GameHUD({
       </div>
 
       {/* top-right chips */}
-      <div className="absolute right-[18px] top-[18px] flex flex-col items-end gap-[10px] [&>*]:pointer-events-auto">
+      <div className="absolute right-3 top-3 flex max-w-[55vw] flex-col items-end gap-2 sm:right-[18px] sm:top-[18px] sm:max-w-none sm:gap-[10px] [&>*]:pointer-events-auto">
         <div className="pixel-chip">
           <span className="em">{worldEmoji}</span>
-          <span>
-            WORLD 1 · <span className="v">{worldName}</span>
+          <span className="truncate">
+            <span className="hidden sm:inline">WORLD 1 · </span>
+            <span className="v">{worldName}</span>
           </span>
         </div>
         <div className="pixel-chip">
@@ -82,14 +83,14 @@ export function GameHUD({
 
       {/* boss nameplate */}
       {bossMode && (
-        <div className="absolute left-1/2 top-[14px] flex w-[560px] -translate-x-1/2 flex-col items-center gap-[6px] [&>*]:pointer-events-auto">
+        <div className="absolute left-1/2 top-3 flex w-[min(560px,92vw)] -translate-x-1/2 flex-col items-center gap-[6px] sm:top-[14px] [&>*]:pointer-events-auto">
           <div
-            className="font-pixel text-[12px] tracking-[2px]"
+            className="text-center font-pixel text-[10px] tracking-[2px] sm:text-[12px]"
             style={{ color: '#ff8a98', textShadow: '2px 2px 0 #07071a' }}
           >
             ⚔ {bossName} ⚔
           </div>
-          <div className="pixel-statbar hp w-[560px]">
+          <div className="pixel-statbar hp" style={{ width: '100%' }}>
             <span className="fill" style={{ width: `${bossHp}%` }} />
             <span className="lbl">BOSS</span>
           </div>
@@ -101,9 +102,9 @@ export function GameHUD({
         <button
           type="button"
           onClick={onPrompt}
-          className="pixel-prompt pointer-events-auto absolute bottom-6 left-1/2 animate-bob"
+          className="pixel-prompt pointer-events-auto absolute bottom-5 left-1/2 max-w-[92vw] animate-bob text-left sm:bottom-6"
         >
-          <span className="pixel-kbd">{promptKey}</span> {prompt}
+          <span className="pixel-kbd shrink-0">{promptKey}</span> {prompt}
         </button>
       )}
     </div>

@@ -18,27 +18,27 @@ export function Achievements({ onBack }: AchievementsProps) {
 
   return (
     <section className="absolute inset-0 flex flex-col">
-      <div className="pixel-scroll relative z-[2] flex min-h-0 flex-1 flex-col overflow-auto px-14 py-12">
+      <div className="pixel-scroll relative z-[2] flex min-h-0 flex-1 flex-col overflow-auto px-4 py-6 sm:px-8 lg:px-14 lg:py-12">
         {/* header */}
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
-            <span className="font-pixel text-[9px] tracking-[3px] text-stellar-teal">
+            <span className="font-pixel text-[8px] tracking-[3px] text-stellar-teal sm:text-[9px]">
               YOUR TROPHIES
             </span>
             <span
-              className="font-pixel text-[22px] tracking-[2px] text-brand-gold-bright"
+              className="disp-head font-pixel text-brand-gold-bright"
               style={{ textShadow: '3px 3px 0 #07071a, 0 0 16px rgba(255,215,0,.3)' }}
             >
               ACHIEVEMENTS
             </span>
           </div>
-          <div className="flex flex-col items-end gap-[10px]">
+          <div className="flex flex-row items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-[10px]">
             <PixelButton variant="ghost" sm onClick={onBack}>
               ‹ MENU
             </PixelButton>
-            <div className="flex items-center gap-3 font-pixel text-[10px] text-brand-gold">
+            <div className="flex items-center gap-2 font-pixel text-[9px] text-brand-gold sm:gap-3 sm:text-[10px]">
               UNLOCKED
-              <div className="pixel-progress w-[160px]">
+              <div className="pixel-progress w-[90px] sm:w-[160px]">
                 <div className="pf" style={{ width: `${pct}%` }} />
               </div>
               <span className="text-brand-gold-bright">
@@ -49,7 +49,7 @@ export function Achievements({ onBack }: AchievementsProps) {
         </div>
 
         {/* badge grid */}
-        <div className="mt-6 grid grid-cols-4 items-start gap-[18px]">
+        <div className="mt-6 grid grid-cols-1 items-start gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
           {BADGES.map((b, i) => (
             <Badge key={b.name} badge={b} index={i} />
           ))}
