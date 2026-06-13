@@ -25,11 +25,16 @@ export const DEFAULT_PHASER_CONFIG: Omit<Phaser.Types.Core.GameConfig, 'scene' |
     default: 'arcade',
     arcade: {
       gravity: { x: 0, y: 600 },
-      debug: process.env.NODE_ENV === 'development',
+      // Debug draws magenta body/velocity overlays — keep off so the level
+      // reads as a game, not a wireframe. Flip on locally when debugging physics.
+      debug: false,
     },
   },
   scale: {
-    mode: Phaser.Scale.FIT,
+    // ENVELOP fills the whole container on any aspect ratio (no letterbox
+    // bands on portrait phones), cropping the overflow instead of shrinking
+    // the game to a strip. FIT would leave large empty margins on mobile.
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   audio: {

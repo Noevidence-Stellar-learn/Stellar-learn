@@ -42,12 +42,48 @@ export class LevelScene extends Phaser.Scene {
   create() {
     this.ensureCharacterTexture()
     this.createAnimations()
+    this.createBackground()
     this.createMap()
     this.createPlayer()
     this.createQuestTriggers()
     this.setupCamera()
     this.setupInput()
     this.createHUD()
+  }
+
+  /**
+   * Cosmic "Origin Plains" backdrop — a night-sky gradient, twinkling stars and
+   * a parallax tree-line. Fixed/low scroll factors so it reads as depth while
+   * the ground scrolls past. Placeholder until the real tileset art lands.
+   */
+  private createBackground() {
+    const w = this.scale.width
+    const h = this.scale.height
+
+    // Sky gradient (pinned to the camera).
+    const sky = this.add.graphics().setScrollFactor(0).setDepth(-20)
+    sky.fillGradientStyle(0x161235, 0x161235, 0x20303a, 0x24402a, 1)
+    sky.fillRect(0, 0, w, h)
+
+    // Stars in the upper two-thirds.
+    for (let i = 0; i < 70; i++) {
+      const x = Phaser.Math.Between(0, w)
+      const y = Phaser.Math.Between(0, h * 0.62)
+      const r = Phaser.Math.FloatBetween(0.5, 1.6)
+      const tint = Phaser.Math.Between(0, 9) > 8 ? 0xffd700 : 0xffffff
+      this.add
+        .circle(x, y, r, tint, Phaser.Math.FloatBetween(0.3, 1))
+        .setScrollFactor(0)
+        .setDepth(-19)
+    }
+
+    // Parallax tree-line hugging the horizon.
+    const trees = this.add.graphics().setScrollFactor(0.35).setDepth(-10)
+    trees.fillStyle(0x12281a, 1)
+    for (let x = -120; x < w * 1.6; x += 150) {
+      const hump = Phaser.Math.Between(70, 120)
+      trees.fillCircle(x, h - TILE_SIZE + 10, hump)
+    }
   }
 
   /**
@@ -60,16 +96,18 @@ export class LevelScene extends Phaser.Scene {
     const key = `char-${characterId}`
     if (this.textures.exists(key)) return
 
-    const size = 128
+    const size = 48
     const g = this.make.graphics({ x: 0, y: 0 }, false)
     g.fillStyle(0x7b5ea7, 1)
     g.fillRect(0, 0, size, size)
-    g.lineStyle(6, 0x07071a, 1)
-    g.strokeRect(3, 3, size - 6, size - 6)
-    // simple eyes so the box reads as a character
+    g.lineStyle(3, 0x07071a, 1)
+    g.strokeRect(1.5, 1.5, size - 3, size - 3)
+    // teal rune on the chest + simple eyes so the box reads as a hero
     g.fillStyle(0x07071a, 1)
-    g.fillRect(size * 0.32, size * 0.34, size * 0.12, size * 0.12)
-    g.fillRect(size * 0.56, size * 0.34, size * 0.12, size * 0.12)
+    g.fillRect(size * 0.3, size * 0.3, size * 0.12, size * 0.12)
+    g.fillRect(size * 0.58, size * 0.3, size * 0.12, size * 0.12)
+    g.fillStyle(0x00bcd4, 1)
+    g.fillRect(size * 0.42, size * 0.56, size * 0.16, size * 0.16)
     g.generateTexture(key, size, size)
     g.destroy()
   }
@@ -137,24 +175,34 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private createFallbackGround() {
-    const ground = this.add.rectangle(
-      this.scale.width / 2,
-      this.scale.height - TILE_SIZE / 2,
-      this.scale.width * 4,
-      TILE_SIZE,
-      0x2d5a1b
-    )
+    const levelWidth = this.scale.width * 4
+    const groundTop = this.scale.height - TILE_SIZE
+
+    // Soil body (this is the physics collider).
+    const ground = this.add
+      .rectangle(levelWidth / 2, this.scale.height - TILE_SIZE / 2, levelWidth, TILE_SIZE, 0x2d5a1b)
+      .setDepth(1)
+    // Grass highlight strip along the top edge.
+    this.add.rectangle(levelWidth / 2, groundTop + 5, levelWidth, 10, 0x3a6e26).setDepth(2)
+    this.add.rectangle(levelWidth / 2, groundTop + 1, levelWidth, 3, 0x173d0e).setDepth(2)
+
     const groundBody = this.physics.add.staticGroup()
     groundBody.add(ground)
     this.registry.set('groundBodyGroup', groundBody)
+    this.registry.set('groundTop', groundTop)
+    this.registry.set('levelWidth', levelWidth)
   }
 
   private createPlayer() {
     const characterId = this.registry.get('characterId') as string
+    const key = `char-${characterId}`
 
-    this.player = this.physics.add.sprite(200, this.scale.height - 200, `char-${characterId}`)
+    this.player = this.physics.add.sprite(160, this.scale.height - TILE_SIZE - 140, key)
     this.player.setCollideWorldBounds(true)
-    this.player.setScale(0.5)
+    // Real spritesheets are 128px → scale down; the generated placeholder is
+    // already screen-sized, so leave it at 1× to keep its body aligned.
+    const isPlaceholder = this.textures.get(key).frameTotal <= 1
+    this.player.setScale(isPlaceholder ? 1 : 0.5)
     this.player.setDepth(5)
 
     const groundLayer = this.registry.get('groundLayer')
@@ -169,25 +217,35 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private createQuestTriggers() {
-    // Quest trigger zones — positioned along the level
-    // Each triggers a lesson panel overlay in React
-    const triggerPositions = [400, 700, 1000, 1300, 1600]
+    // Quest trigger zones along the level — each opens a lesson panel in React.
+    const triggerPositions = [420, 760, 1100, 1440, 1780]
+    const groundTop = (this.registry.get('groundTop') as number | undefined) ?? this.scale.height - TILE_SIZE
 
     triggerPositions.forEach((x, i) => {
-      const zone = this.add.zone(x, this.scale.height - 150, 80, 150)
+      const zone = this.add.zone(x, groundTop - 60, 90, 160)
       this.physics.world.enable(zone)
       this.questTriggers.push(zone)
 
-      // Visual indicator
-      const indicator = this.add.text(x, this.scale.height - 220, '!', {
+      // Glowing rune pedestal standing on the ground.
+      const pedestal = this.add.container(x, groundTop)
+      const glow = this.add.circle(0, -20, 22, 0xffd700, 0.18)
+      const rune = this.add.rectangle(0, -20, 22, 22, 0x3d5afe).setStrokeStyle(3, 0x07071a)
+      const post = this.add.rectangle(0, -2, 10, 26, 0x1a1a2e).setStrokeStyle(2, 0x07071a)
+      pedestal.add([glow, post, rune])
+      pedestal.setDepth(4)
+
+      this.tweens.add({ targets: glow, alpha: 0.4, scale: 1.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+
+      // Bobbing "!" above the rune.
+      const indicator = this.add.text(x, groundTop - 64, '!', {
         fontFamily: '"Press Start 2P"',
-        fontSize: '20px',
+        fontSize: '18px',
         color: '#ffd700',
-      }).setOrigin(0.5)
+      }).setOrigin(0.5).setDepth(5)
 
       this.tweens.add({
         targets: indicator,
-        y: this.scale.height - 230,
+        y: groundTop - 74,
         duration: 600,
         yoyo: true,
         repeat: -1,
@@ -205,6 +263,9 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private setupCamera() {
+    const levelWidth = (this.registry.get('levelWidth') as number | undefined) ?? this.scale.width * 4
+    this.physics.world.setBounds(0, 0, levelWidth, this.scale.height)
+    this.cameras.main.setBounds(0, 0, levelWidth, this.scale.height)
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08)
     this.cameras.main.setZoom(1.2)
   }

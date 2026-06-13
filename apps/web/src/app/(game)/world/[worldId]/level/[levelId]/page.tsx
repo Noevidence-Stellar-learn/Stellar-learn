@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GameCanvas } from '@/components/game/GameCanvas'
 import { QuestPanel } from '@/components/game/QuestPanel'
@@ -19,6 +19,30 @@ export default function LevelPage({ params }: PageProps) {
 
   const world = worlds.find((w) => w.slug === worldId)
 
+  // Load any saved XP / completed quests for the signed-in player on entry.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/progress')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { xp?: number; progress?: { questId: string; status: string }[] } | null) => {
+        if (cancelled || !data) return
+        if (typeof data.xp === 'number') setXP(data.xp)
+        if (Array.isArray(data.progress)) {
+          setCompletedQuests(
+            new Set(
+              data.progress.filter((p) => p.status === 'COMPLETED').map((p) => p.questId)
+            )
+          )
+        }
+      })
+      .catch(() => {
+        /* not signed in / offline — start fresh */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const handleQuestTriggered = useCallback(
     (questIndex: number) => {
       const quest = world?.quests[questIndex]
@@ -29,12 +53,24 @@ export default function LevelPage({ params }: PageProps) {
     [world, completedQuests]
   )
 
-  const handleQuestComplete = useCallback((questId: string, xpEarned: number) => {
+  const handleQuestComplete = useCallback(async (questId: string, xpEarned: number) => {
     setCompletedQuests((prev) => new Set([...prev, questId]))
-    setXP((prev) => prev + xpEarned)
     setActiveQuest(null)
+    setXP((prev) => prev + xpEarned) // optimistic; reconciled with server below
 
-    // TODO: persist to server via API route
+    try {
+      const res = await fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questId, xpEarned }),
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { totalXP?: number }
+        if (typeof data.totalXP === 'number') setXP(data.totalXP)
+      }
+    } catch {
+      // not signed in / offline — keep the optimistic local XP
+    }
   }, [])
 
   const handleQuestClose = useCallback(() => {

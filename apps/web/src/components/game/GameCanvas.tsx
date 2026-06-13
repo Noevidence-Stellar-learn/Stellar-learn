@@ -43,6 +43,11 @@ export function GameCanvas({
         scene: [BootScene, WorldMapScene, LevelScene],
       })
 
+      // Tell BootScene to boot straight into the level (set before boot runs)
+      // so only LevelScene is active — WorldMapScene never starts here.
+      game.registry.set('bootScene', 'LevelScene')
+      game.registry.set('bootData', { worldId, levelId, characterId })
+
       game.events.on('quest-triggered', ({ questIndex }: { questIndex: number }) => {
         onQuestTriggered(questIndex)
       })
@@ -51,9 +56,7 @@ export function GameCanvas({
         onXPUpdate(xp)
       })
 
-      // Start the level directly
       game.events.once('ready', () => {
-        game?.scene.start('LevelScene', { worldId, levelId, characterId })
         setIsLoading(false)
       })
 
@@ -74,7 +77,7 @@ export function GameCanvas({
   }
 
   return (
-    <div className="game-canvas-container aspect-video w-full">
+    <div className="game-canvas-container h-[100svh] min-h-[420px] w-full">
       {isLoading && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-brand-dark">
           <div className="font-pixel text-xs text-brand-gold animate-pulse">Loading world...</div>
