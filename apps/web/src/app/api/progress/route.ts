@@ -2,29 +2,37 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@stellar-learn/database'
 import { clerkEnabled } from '@/lib/auth'
+import { loggerFromHeaders } from '@/lib/correlation'
 import { updateLeaderboard } from '@/lib/leaderboard'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const log = loggerFromHeaders(request.headers)
   if (!clerkEnabled) return NextResponse.json({ error: 'Auth not configured' }, { status: 401 })
 
   const { userId: clerkId } = auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    include: {
-      progress: { include: { quest: true } },
-    },
-  })
+  try {
+    const user = await prisma.user.findUnique({
+      where: { clerkId },
+      include: {
+        progress: { include: { quest: true } },
+      },
+    })
 
-  // A signed-in player who hasn't completed anything yet simply has no row —
-  // return an empty progress set rather than a 404 the dashboard has to handle.
-  if (!user) return NextResponse.json({ progress: [], xp: 0, level: 1 })
+    // A signed-in player who hasn't completed anything yet simply has no row —
+    // return an empty progress set rather than a 404 the dashboard has to handle.
+    if (!user) return NextResponse.json({ progress: [], xp: 0, level: 1 })
 
-  return NextResponse.json({ progress: user.progress, xp: user.currentXP, level: user.level })
+    return NextResponse.json({ progress: user.progress, xp: user.currentXP, level: user.level })
+  } catch (error) {
+    log.error('progress fetch failed', { clerkId }, error)
+    return NextResponse.json({ error: 'Failed to load progress' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
+  const log = loggerFromHeaders(request.headers)
   if (!clerkEnabled) return NextResponse.json({ error: 'Auth not configured' }, { status: 401 })
 
   const { userId: clerkId } = auth()
@@ -36,63 +44,69 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'questId and xpEarned are required' }, { status: 400 })
   }
 
-  // Create the local user row on first interaction (Clerk holds the identity;
-  // our DB needs a matching row to attach progress/XP to).
-  const clerkUser = await currentUser()
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? `${clerkId}@noemail.local`
-  const username = clerkUser?.username ?? `player_${clerkId.slice(-8)}`
+  try {
+    // Create the local user row on first interaction (Clerk holds the identity;
+    // our DB needs a matching row to attach progress/XP to).
+    const clerkUser = await currentUser()
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? `${clerkId}@noemail.local`
+    const username = clerkUser?.username ?? `player_${clerkId.slice(-8)}`
 
-  const user = await prisma.user.upsert({
-    where: { clerkId },
-    update: { lastActiveAt: new Date() },
-    create: {
-      clerkId,
-      email,
-      username,
-      avatarUrl: clerkUser?.imageUrl ?? null,
-      lastActiveAt: new Date(),
-    },
-  })
+    const user = await prisma.user.upsert({
+      where: { clerkId },
+      update: { lastActiveAt: new Date() },
+      create: {
+        clerkId,
+        email,
+        username,
+        avatarUrl: clerkUser?.imageUrl ?? null,
+        lastActiveAt: new Date(),
+      },
+    })
 
-  // Award XP only the first time a quest is completed; replays don't double-count.
-  const existing = await prisma.progress.findUnique({
-    where: { userId_questId: { userId: user.id, questId } },
-  })
-  const alreadyCompleted = existing?.status === 'COMPLETED'
-  const award = alreadyCompleted ? 0 : xpEarned
+    // Award XP only the first time a quest is completed; replays don't double-count.
+    const existing = await prisma.progress.findUnique({
+      where: { userId_questId: { userId: user.id, questId } },
+    })
+    const alreadyCompleted = existing?.status === 'COMPLETED'
+    const award = alreadyCompleted ? 0 : xpEarned
 
-  await prisma.progress.upsert({
-    where: { userId_questId: { userId: user.id, questId } },
-    update: {
-      status: 'COMPLETED',
-      xpEarned: Math.max(existing?.xpEarned ?? 0, xpEarned),
-      completedAt: new Date(),
-      attempts: { increment: 1 },
-    },
-    create: {
-      userId: user.id,
-      questId,
-      status: 'COMPLETED',
-      xpEarned,
-      completedAt: new Date(),
-      attempts: 1,
-    },
-  })
+    await prisma.progress.upsert({
+      where: { userId_questId: { userId: user.id, questId } },
+      update: {
+        status: 'COMPLETED',
+        xpEarned: Math.max(existing?.xpEarned ?? 0, xpEarned),
+        completedAt: new Date(),
+        attempts: { increment: 1 },
+      },
+      create: {
+        userId: user.id,
+        questId,
+        status: 'COMPLETED',
+        xpEarned,
+        completedAt: new Date(),
+        attempts: 1,
+      },
+    })
 
-  const updatedUser = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      currentXP: { increment: award },
-      lastActiveAt: new Date(),
-    },
-  })
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        currentXP: { increment: award },
+        lastActiveAt: new Date(),
+      },
+    })
 
-  // Mirror the new XP total into the global leaderboard (no-op if Upstash off).
-  await updateLeaderboard(user.id, user.username, updatedUser.currentXP)
+    // Mirror the new XP total into the global leaderboard (no-op if Upstash off).
+    await updateLeaderboard(user.id, user.username, updatedUser.currentXP)
 
-  return NextResponse.json({
-    success: true,
-    totalXP: updatedUser.currentXP,
-    awarded: award,
-  })
+    log.info('quest progress recorded', { clerkId, questId, awarded: award })
+    return NextResponse.json({
+      success: true,
+      totalXP: updatedUser.currentXP,
+      awarded: award,
+    })
+  } catch (error) {
+    log.error('progress update failed', { clerkId, questId }, error)
+    return NextResponse.json({ error: 'Failed to record progress' }, { status: 500 })
+  }
 }
