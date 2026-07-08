@@ -233,5 +233,105 @@ export const world3: World = {
         },
       ],
     },
+    {
+      id: 'q3-6-anchors-rwa',
+      worldId: 'world-3-asset-forge',
+      slug: 'anchors-and-rwa',
+      title: 'Anchors & Real-World Assets',
+      description: 'How fiat money and real-world value bridge onto the Stellar network.',
+      type: 'lesson',
+      order: 6,
+      xpReward: 60,
+      estimatedMinutes: 8,
+      content: [
+        {
+          type: 'text',
+          content:
+            "## Bridging Two Worlds\n\nStellar is great for moving value, but how does value get onto the network in the first place? This is where **Anchors** come in. Anchors are trusted entities (like banks, fintech companies, or money service businesses) that act as a bridge between the Stellar network and traditional finance.\n\nThey hold fiat currency (like USD or EUR) or other Real-World Assets (RWA) in reserve, and issue equivalent tokens on Stellar. For example, a fiat-backed stablecoin like USDC is issued by Circle, which acts as an anchor.",
+        },
+        {
+          type: 'text',
+          content:
+            "## Real-World Assets (RWA)\n\nAn anchor doesn't just have to issue fiat stablecoins. It can digitize any real-world asset (RWA). Stocks, bonds, real estate, and commodities can all be represented as tokens on Stellar. As long as users trust the anchor to hold the real asset and honor redemptions, the digital token holds its real-world value.\n\n*Source: [Stellar Docs - Anchors](https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/anchors)*",
+        },
+        {
+          type: 'callout',
+          variant: 'info',
+          content:
+            "Trust is key. When you hold an anchor's token, you are trusting them to maintain the 1:1 backing and process withdrawals.",
+        },
+        {
+          type: 'text',
+          content:
+            "## Stellar Ecosystem Proposals (SEPs)\n\nTo ensure all wallets and anchors can talk to each other seamlessly, the Stellar community uses **SEPs** (Stellar Ecosystem Proposals). These are standardized protocols for interoperability.\n\nFor depositing and withdrawing, two SEPs are critical:\n- **SEP-6**: Programmatic, API-based deposit and withdrawal.\n- **SEP-24**: Interactive, web-based deposit and withdrawal (often used for KYC).",
+        },
+        {
+          type: 'text',
+          content:
+            "## How Deposits Work (SEP-24)\n\n1. A user wants to deposit USD via a wallet.\n2. The wallet contacts the anchor using SEP-24.\n3. The anchor opens an interactive web page inside the wallet for the user to complete KYC (Know Your Customer) and bank transfer details.\n4. Once the anchor receives the real USD, it mints and sends the equivalent Stellar token to the user's account.\n\nWithdrawals work in reverse: the user sends tokens back to the anchor, the anchor burns them, and wires the real USD to the user's bank account.\n\n*Source: [Stellar SEP-24 Specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md)*",
+        },
+      ],
+    },
+    {
+      id: 'q3-7-anchors-quiz',
+      worldId: 'world-3-asset-forge',
+      slug: 'anchors-rwa-quiz',
+      title: 'Quiz: Anchors & RWA',
+      description: 'Test your knowledge on how value enters and exits the network.',
+      type: 'quiz',
+      order: 7,
+      xpReward: 100,
+      estimatedMinutes: 5,
+      content: [
+        {
+          id: 'q1',
+          question: 'What is the primary role of an Anchor on the Stellar network?',
+          options: [
+            { id: 'a', text: 'To mine new XLM for the network', isCorrect: false },
+            { id: 'b', text: 'To act as a bridge between the Stellar network and traditional finance', isCorrect: true },
+            { id: 'c', text: 'To securely store user private keys', isCorrect: false },
+            { id: 'd', text: 'To govern protocol upgrades', isCorrect: false },
+          ],
+          explanation:
+            'Anchors bridge two worlds by taking in real-world assets (like fiat) and issuing equivalent tokens on Stellar.',
+        },
+        {
+          id: 'q2',
+          question: 'What does RWA stand for in the context of Stellar tokens?',
+          options: [
+            { id: 'a', text: 'Real-World Assets', isCorrect: true },
+            { id: 'b', text: 'Return With Analytics', isCorrect: false },
+            { id: 'c', text: 'Randomized Wallet Access', isCorrect: false },
+            { id: 'd', text: 'Read-Write Authority', isCorrect: false },
+          ],
+          explanation:
+            'RWA stands for Real-World Assets, which refers to off-chain assets (like stocks, bonds, or fiat) that are tokenized on the blockchain.',
+        },
+        {
+          id: 'q3',
+          question: 'Which Stellar Ecosystem Proposal (SEP) is commonly used for interactive, web-based deposits and withdrawals that require KYC?',
+          options: [
+            { id: 'a', text: 'SEP-7', isCorrect: false },
+            { id: 'b', text: 'SEP-6', isCorrect: false },
+            { id: 'c', text: 'SEP-24', isCorrect: true },
+            { id: 'd', text: 'SEP-10', isCorrect: false },
+          ],
+          explanation:
+            'SEP-24 provides an interactive web flow, allowing users to easily complete KYC and provide bank details inside their wallet interface.',
+        },
+        {
+          id: 'q4',
+          question: 'What happens during a fiat withdrawal process via an Anchor?',
+          options: [
+            { id: 'a', text: 'The user sends XLM to the anchor, and the anchor sends fiat back', isCorrect: false },
+            { id: 'b', text: 'The anchor locks the user account', isCorrect: false },
+            { id: 'c', text: 'The user sends the token to the anchor, the anchor burns it and wires the real-world asset/fiat', isCorrect: true },
+            { id: 'd', text: 'The user converts the token to native XLM instantly', isCorrect: false },
+          ],
+          explanation:
+            'To withdraw, the user returns the token to the anchor. The anchor removes it from circulation (burns it) and sends the underlying real-world asset to the user.',
+        },
+      ],
+    },
   ],
 }
