@@ -147,14 +147,14 @@ export function QuestModal({
                     color: '#c9d6ff',
                   }}
                 >
-                  <span className="c">// forge your keypair</span>
+                  <span className="c">{'// forge your keypair'}</span>
                   <br />
                   <span className="k">const</span> pair = Keypair.<span className="f">random</span>();
                   <br />
-                  pair.<span className="f">publicKey</span>() <span className="c">// </span>
+                  pair.<span className="f">publicKey</span>() <span className="c">{'// '}</span>
                   <span className="s">&quot;GABC…XYZ&quot;</span>
                   <br />
-                  pair.<span className="f">secret</span>() <span className="c">// </span>
+                  pair.<span className="f">secret</span>() <span className="c">{'// '}</span>
                   <span className="s">&quot;SDEF…789&quot;</span>{' '}
                   <span className="c">🔒 keep secret</span>
                 </div>
