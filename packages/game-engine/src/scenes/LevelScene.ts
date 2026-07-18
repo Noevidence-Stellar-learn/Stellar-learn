@@ -6,11 +6,25 @@ import { ART_ASSETS_AVAILABLE, TILE_SIZE } from '../config'
  * Player walks through the level, collecting quest items and triggering lesson panels.
  * Each "trigger zone" opens a lesson/quiz in the React overlay layer.
  */
+interface QuestTrigger {
+  zone: Phaser.GameObjects.Zone
+  rune: Phaser.GameObjects.Rectangle
+  glow: Phaser.GameObjects.Arc
+  glowTween: Phaser.Tweens.Tween
+  indicator: Phaser.GameObjects.Text
+  completed: boolean
+}
+
 export class LevelScene extends Phaser.Scene {
+  /** X positions of the quest runes along the level, in quest order. */
+  private static readonly TRIGGER_POSITIONS = [420, 760, 1100, 1440, 1780]
+
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>
-  private questTriggers: Phaser.GameObjects.Zone[] = []
+  private interactKey!: Phaser.Input.Keyboard.Key
+  private questTriggers: QuestTrigger[] = []
+  private interactPrompt!: Phaser.GameObjects.Text
   private isInteracting = false
 
   constructor() {
@@ -40,15 +54,23 @@ export class LevelScene extends Phaser.Scene {
   }
 
   create() {
+    this.isInteracting = false
+    this.questTriggers = []
+
     this.ensureCharacterTexture()
     this.createAnimations()
     this.createBackground()
     this.createMap()
     this.createPlayer()
     this.createQuestTriggers()
+    this.createInteractPrompt()
     this.setupCamera()
     this.setupInput()
     this.createHUD()
+
+    // Tell the React layer the level is fully built so it can sync any
+    // previously completed quests into the scene.
+    this.game.events.emit('level-ready')
   }
 
   /**
@@ -113,9 +135,13 @@ export class LevelScene extends Phaser.Scene {
   }
 
   override update() {
-    if (this.isInteracting) return
+    if (this.isInteracting) {
+      this.interactPrompt.setVisible(false)
+      return
+    }
     this.handleMovement()
     this.updateAnimations()
+    this.updateQuestInteraction()
   }
 
   private createAnimations() {
@@ -197,7 +223,10 @@ export class LevelScene extends Phaser.Scene {
     const characterId = this.registry.get('characterId') as string
     const key = `char-${characterId}`
 
-    this.player = this.physics.add.sprite(160, this.scale.height - TILE_SIZE - 140, key)
+    // Spawn on top of the first quest rune so a new player lands straight on
+    // the interaction prompt for the first quest — no wandering to find it.
+    const spawnX = LevelScene.TRIGGER_POSITIONS[0] ?? 160
+    this.player = this.physics.add.sprite(spawnX, this.scale.height - TILE_SIZE - 140, key)
     this.player.setCollideWorldBounds(true)
     // Real spritesheets are 128px → scale down; the generated placeholder is
     // already screen-sized, so leave it at 1× to keep its body aligned.
@@ -218,13 +247,12 @@ export class LevelScene extends Phaser.Scene {
 
   private createQuestTriggers() {
     // Quest trigger zones along the level — each opens a lesson panel in React.
-    const triggerPositions = [420, 760, 1100, 1440, 1780]
+    // Quests open on an explicit key press while overlapping (see
+    // updateQuestInteraction), never on mere overlap.
     const groundTop = (this.registry.get('groundTop') as number | undefined) ?? this.scale.height - TILE_SIZE
 
-    triggerPositions.forEach((x, i) => {
+    LevelScene.TRIGGER_POSITIONS.forEach((x) => {
       const zone = this.add.zone(x, groundTop - 60, 90, 160)
-      this.physics.world.enable(zone)
-      this.questTriggers.push(zone)
 
       // Glowing rune pedestal standing on the ground.
       const pedestal = this.add.container(x, groundTop)
@@ -234,7 +262,7 @@ export class LevelScene extends Phaser.Scene {
       pedestal.add([glow, post, rune])
       pedestal.setDepth(4)
 
-      this.tweens.add({ targets: glow, alpha: 0.4, scale: 1.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+      const glowTween = this.tweens.add({ targets: glow, alpha: 0.4, scale: 1.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
 
       // Bobbing "!" above the rune.
       const indicator = this.add.text(x, groundTop - 64, '!', {
@@ -252,14 +280,70 @@ export class LevelScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       })
 
-      this.physics.add.overlap(this.player, zone, () => {
-        if (!this.isInteracting) {
-          this.isInteracting = true
-          indicator.setVisible(false)
-          this.game.events.emit('quest-triggered', { questIndex: i })
-        }
-      })
+      this.questTriggers.push({ zone, rune, glow, glowTween, indicator, completed: false })
     })
+  }
+
+  /**
+   * "Press E to interact" affordance shown only while the player stands on an
+   * uncompleted rune. Positioned in updateQuestInteraction each frame.
+   */
+  private createInteractPrompt() {
+    this.interactPrompt = this.add
+      .text(0, 0, 'PRESS E TO INTERACT', {
+        fontFamily: '"Press Start 2P"',
+        fontSize: '10px',
+        color: '#07071a',
+        backgroundColor: '#ffd700',
+        padding: { x: 8, y: 6 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(21)
+      .setVisible(false)
+  }
+
+  /** Index of the uncompleted quest rune the player currently stands on, or -1. */
+  private getOverlappedTriggerIndex(): number {
+    const playerBounds = this.player.getBounds()
+    return this.questTriggers.findIndex(
+      (trigger) =>
+        !trigger.completed &&
+        Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, trigger.zone.getBounds())
+    )
+  }
+
+  private updateQuestInteraction() {
+    const index = this.getOverlappedTriggerIndex()
+    if (index === -1) {
+      this.interactPrompt.setVisible(false)
+      return
+    }
+
+    const trigger = this.questTriggers[index]
+    if (!trigger) return
+
+    this.interactPrompt
+      .setPosition(trigger.zone.x, trigger.zone.getBounds().top - 26)
+      .setVisible(true)
+
+    if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+      this.isInteracting = true
+      this.player.setVelocityX(0)
+      trigger.indicator.setVisible(false)
+      this.game.events.emit('quest-triggered', { questIndex: index })
+    }
+  }
+
+  /** Mark a quest rune as completed — it dims and can no longer be re-opened. */
+  private markQuestCompleted(index: number) {
+    const trigger = this.questTriggers[index]
+    if (!trigger || trigger.completed) return
+
+    trigger.completed = true
+    trigger.glowTween.stop()
+    trigger.glow.setVisible(false)
+    trigger.rune.setFillStyle(0x4a4a5e)
+    trigger.indicator.setVisible(false)
   }
 
   private setupCamera() {
@@ -277,10 +361,31 @@ export class LevelScene extends Phaser.Scene {
       left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
       right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     }
+    this.interactKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E)
 
-    // Listen for React layer telling us interaction is done
-    this.game.events.on('quest-closed', () => {
+    // React layer telling us a quest panel closed. When it was completed the
+    // rune is retired so a finished quest can never be reopened.
+    const onQuestClosed = (data?: { questIndex?: number; completed?: boolean }) => {
       this.isInteracting = false
+      if (data?.questIndex === undefined) return
+      if (data.completed) {
+        this.markQuestCompleted(data.questIndex)
+      } else {
+        this.questTriggers[data.questIndex]?.indicator.setVisible(true)
+      }
+    }
+
+    // React layer syncing quests the player already completed (persisted
+    // progress fetched after the level booted).
+    const onQuestsSynced = (indices: number[]) => {
+      indices.forEach((index) => this.markQuestCompleted(index))
+    }
+
+    this.game.events.on('quest-closed', onQuestClosed)
+    this.game.events.on('quests-synced', onQuestsSynced)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off('quest-closed', onQuestClosed)
+      this.game.events.off('quests-synced', onQuestsSynced)
     })
   }
 

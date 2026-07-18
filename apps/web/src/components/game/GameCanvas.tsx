@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type Phaser from 'phaser'
 
 interface GameCanvasProps {
@@ -11,20 +11,41 @@ interface GameCanvasProps {
   onXPUpdate: (xp: number) => void
 }
 
+export interface GameCanvasHandle {
+  /** Notify the game a quest panel closed; `completed` retires its rune. */
+  questClosed: (questIndex: number, completed: boolean) => void
+  /** Push already-completed quest indices (persisted progress) into the game. */
+  syncCompletedQuests: (indices: number[]) => void
+}
+
 /**
  * GameCanvas — mounts the Phaser game inside a Next.js client component.
  * Phaser is dynamically imported to avoid SSR issues (no window on server).
  */
-export function GameCanvas({
-  worldId,
-  levelId,
-  characterId = 'warrior',
-  onQuestTriggered,
-  onXPUpdate,
-}: GameCanvasProps) {
+export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
+  { worldId, levelId, characterId = 'warrior', onQuestTriggered, onXPUpdate },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // The level scene registers its event listeners during create(); anything
+  // emitted before 'level-ready' would be lost, so buffer the progress sync.
+  const levelReadyRef = useRef(false)
+  const pendingSyncRef = useRef<number[] | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    questClosed(questIndex: number, completed: boolean) {
+      gameRef.current?.events.emit('quest-closed', { questIndex, completed })
+    },
+    syncCompletedQuests(indices: number[]) {
+      if (levelReadyRef.current && gameRef.current) {
+        gameRef.current.events.emit('quests-synced', indices)
+      } else {
+        pendingSyncRef.current = indices
+      }
+    },
+  }))
 
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return
@@ -56,6 +77,14 @@ export function GameCanvas({
         onXPUpdate(xp)
       })
 
+      game.events.on('level-ready', () => {
+        levelReadyRef.current = true
+        if (pendingSyncRef.current) {
+          game?.events.emit('quests-synced', pendingSyncRef.current)
+          pendingSyncRef.current = null
+        }
+      })
+
       game.events.once('ready', () => {
         setIsLoading(false)
       })
@@ -68,13 +97,9 @@ export function GameCanvas({
     return () => {
       game?.destroy(true)
       gameRef.current = null
+      levelReadyRef.current = false
     }
   }, [worldId, levelId, characterId, onQuestTriggered, onXPUpdate])
-
-  // Tell the game to resume when a quest panel is closed
-  const resumeGame = () => {
-    gameRef.current?.events.emit('quest-closed')
-  }
 
   return (
     <div className="game-canvas-container h-[100svh] min-h-[420px] w-full">
@@ -86,4 +111,4 @@ export function GameCanvas({
       <div ref={containerRef} className="h-full w-full" />
     </div>
   )
-}
+})
