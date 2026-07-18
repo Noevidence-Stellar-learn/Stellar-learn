@@ -10,8 +10,9 @@ import {
   TILE_SIZE,
   WORLD_BOSSES,
   WORLD_ENEMIES,
-  type SheetAnim,
 } from '../config'
+import { createSheetAnimations } from '../animations'
+import { ensureCharacterTexture } from '../textures'
 
 /**
  * LevelScene — the main 2D platformer level.
@@ -38,6 +39,7 @@ export class LevelScene extends Phaser.Scene {
   private questTriggers: QuestTrigger[] = []
   private interactPrompt!: Phaser.GameObjects.Text
   private isInteracting = false
+  private bossStarted = false
 
   constructor() {
     super({ key: 'LevelScene' })
@@ -87,9 +89,12 @@ export class LevelScene extends Phaser.Scene {
 
   create() {
     this.isInteracting = false
+    this.bossStarted = false
     this.questTriggers = []
 
-    this.ensureCharacterTexture()
+    // When the real spritesheet didn't load (no art yet, or a 404), a
+    // generated placeholder box keeps the player rendering.
+    ensureCharacterTexture(this, this.registry.get('characterId') as string)
     this.createAnimations()
     this.createBackground()
     this.createMap()
@@ -140,32 +145,6 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * Guarantee a usable character texture. When the real spritesheet didn't load
-   * (no art yet, or a 404), generate a single-frame placeholder box so the
-   * player sprite still renders instead of Phaser's missing-texture marker.
-   */
-  private ensureCharacterTexture() {
-    const characterId = this.registry.get('characterId') as string
-    const key = `char-${characterId}`
-    if (this.textures.exists(key)) return
-
-    const size = 48
-    const g = this.make.graphics({ x: 0, y: 0 }, false)
-    g.fillStyle(0x7b5ea7, 1)
-    g.fillRect(0, 0, size, size)
-    g.lineStyle(3, 0x07071a, 1)
-    g.strokeRect(1.5, 1.5, size - 3, size - 3)
-    // teal rune on the chest + simple eyes so the box reads as a hero
-    g.fillStyle(0x07071a, 1)
-    g.fillRect(size * 0.3, size * 0.3, size * 0.12, size * 0.12)
-    g.fillRect(size * 0.58, size * 0.3, size * 0.12, size * 0.12)
-    g.fillStyle(0x00bcd4, 1)
-    g.fillRect(size * 0.42, size * 0.56, size * 0.16, size * 0.16)
-    g.generateTexture(key, size, size)
-    g.destroy()
-  }
-
   override update() {
     if (this.isInteracting) {
       this.interactPrompt.setVisible(false)
@@ -180,36 +159,15 @@ export class LevelScene extends Phaser.Scene {
     const characterId = this.registry.get('characterId') as string
     const worldId = this.registry.get('worldId') as string
 
-    this.createSheetAnimations(`char-${characterId}`, characterId, CHARACTER_ANIMS)
+    createSheetAnimations(this, `char-${characterId}`, characterId, CHARACTER_ANIMS)
 
     // Boss/enemy animations for this world (played by the boss battle and
     // hazards — Issue #4). Same guard: only when the sheet actually loaded.
     const bossId = WORLD_BOSSES[worldId]
-    if (bossId) this.createSheetAnimations(`boss-${bossId}`, `boss-${bossId}`, BOSS_ANIMS)
+    if (bossId) createSheetAnimations(this, `boss-${bossId}`, `boss-${bossId}`, BOSS_ANIMS)
     for (const enemyId of WORLD_ENEMIES[worldId] ?? []) {
-      this.createSheetAnimations(`enemy-${enemyId}`, `enemy-${enemyId}`, ENEMY_ANIMS)
+      createSheetAnimations(this, `enemy-${enemyId}`, `enemy-${enemyId}`, ENEMY_ANIMS)
     }
-  }
-
-  /**
-   * Register `<prefix>-<anim>` animations for a loaded spritesheet.
-   * A multi-frame spritesheet is required. With only a single-frame
-   * placeholder (no art yet) we skip animations and show the static sprite —
-   * creating zero-frame animations would crash Phaser when played.
-   */
-  private createSheetAnimations(textureKey: string, prefix: string, anims: Record<string, SheetAnim>) {
-    if (!this.textures.exists(textureKey) || this.textures.get(textureKey).frameTotal <= 1) return
-
-    Object.entries(anims).forEach(([name, { start, end, frameRate, repeat }]) => {
-      if (!this.anims.exists(`${prefix}-${name}`)) {
-        this.anims.create({
-          key: `${prefix}-${name}`,
-          frames: this.anims.generateFrameNumbers(textureKey, { start, end }),
-          frameRate,
-          repeat,
-        })
-      }
-    })
   }
 
   private createMap() {
@@ -426,11 +384,39 @@ export class LevelScene extends Phaser.Scene {
       indices.forEach((index) => this.markQuestCompleted(index))
     }
 
+    // React layer starting the world finale (Issue #4). It decides the
+    // outcome from the tracked quest pass/fail results; the scene only
+    // verifies the trigger condition — every rune of this world retired.
+    const onBossStart = (data?: { won?: boolean; bossName?: string }) => {
+      if (this.bossStarted) return
+      if (!this.questTriggers.every((trigger) => trigger.completed)) return
+
+      this.bossStarted = true
+      this.isInteracting = true
+      this.player.setVelocityX(0)
+
+      // A short beat so the player sees the final rune retire, then fade
+      // into the battle.
+      this.time.delayedCall(700, () => {
+        this.cameras.main.fadeOut(450, 0, 0, 0)
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.scene.start('BossScene', {
+            worldId: this.registry.get('worldId') as string,
+            characterId: this.registry.get('characterId') as string,
+            won: data?.won === true,
+            bossName: data?.bossName,
+          })
+        })
+      })
+    }
+
     this.game.events.on('quest-closed', onQuestClosed)
     this.game.events.on('quests-synced', onQuestsSynced)
+    this.game.events.on('boss-start', onBossStart)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('quest-closed', onQuestClosed)
       this.game.events.off('quests-synced', onQuestsSynced)
+      this.game.events.off('boss-start', onBossStart)
     })
   }
 

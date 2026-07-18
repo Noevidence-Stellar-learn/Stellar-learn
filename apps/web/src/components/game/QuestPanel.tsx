@@ -4,9 +4,12 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Quest, LessonBlock, QuizQuestion } from '@stellar-learn/content'
 
+/** Minimum share of correct quiz answers that counts as passing the quest. */
+const QUIZ_PASS_RATIO = 0.7
+
 interface QuestPanelProps {
   quest: Quest | null
-  onComplete: (questId: string, xpEarned: number) => void
+  onComplete: (questId: string, xpEarned: number, passed: boolean) => void
   onClose: () => void
 }
 
@@ -17,7 +20,17 @@ export function QuestPanel({ quest, onComplete, onClose }: QuestPanelProps) {
   if (!quest) return null
 
   const handleComplete = () => {
-    onComplete(quest.id, quest.xpReward)
+    // Pass/fail feeds the boss-battle outcome: lessons pass by being read,
+    // quizzes require QUIZ_PASS_RATIO of the answers to be correct.
+    let passed = true
+    if (quest.type === 'quiz') {
+      const questions = quest.content as QuizQuestion[]
+      const score = questions.filter(
+        (q) => q.options.find((o) => o.id === quizAnswers[q.id])?.isCorrect
+      ).length
+      passed = questions.length === 0 || score / questions.length >= QUIZ_PASS_RATIO
+    }
+    onComplete(quest.id, quest.xpReward, passed)
     setQuizAnswers({})
     setQuizSubmitted(false)
   }

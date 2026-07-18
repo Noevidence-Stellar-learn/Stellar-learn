@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GameCanvas, type GameCanvasHandle } from '@/components/game/GameCanvas'
 import { QuestPanel } from '@/components/game/QuestPanel'
@@ -16,7 +17,13 @@ export default function LevelPage({ params }: PageProps) {
   const [activeQuest, setActiveQuest] = useState<Quest | null>(null)
   const [xp, setXP] = useState(0)
   const [completedQuests, setCompletedQuests] = useState<Set<string>>(new Set())
+  const [bossResult, setBossResult] = useState<{ won: boolean } | null>(null)
   const canvasRef = useRef<GameCanvasHandle>(null)
+  // Pass/fail per quest id, from QuestPanel. Quests restored from persisted
+  // progress have no recorded result and count as passed (they were completed
+  // in an earlier session). Drives the boss-battle outcome — never random.
+  const questResultsRef = useRef<Record<string, boolean>>({})
+  const bossStartedRef = useRef(false)
 
   const world = worlds.find((w) => w.slug === worldId)
 
@@ -62,8 +69,10 @@ export default function LevelPage({ params }: PageProps) {
     [world, completedQuests]
   )
 
-  const handleQuestComplete = useCallback(async (questId: string, xpEarned: number) => {
-    setCompletedQuests((prev) => new Set([...prev, questId]))
+  const handleQuestComplete = useCallback(async (questId: string, xpEarned: number, passed: boolean) => {
+    questResultsRef.current[questId] = passed
+    const nextCompleted = new Set([...completedQuests, questId])
+    setCompletedQuests(nextCompleted)
     setActiveQuest(null)
     setXP((prev) => prev + xpEarned) // optimistic; reconciled with server below
 
@@ -71,6 +80,18 @@ export default function LevelPage({ params }: PageProps) {
     const questIndex = world?.quests.findIndex((q) => q.id === questId) ?? -1
     if (questIndex !== -1) {
       canvasRef.current?.questClosed(questIndex, true)
+    }
+
+    // World finale: the moment the last quest completes, launch the boss
+    // battle. The player wins it only if every quest was passed (Issue #4).
+    if (
+      world &&
+      !bossStartedRef.current &&
+      world.quests.every((q) => nextCompleted.has(q.id))
+    ) {
+      bossStartedRef.current = true
+      const won = world.quests.every((q) => questResultsRef.current[q.id] !== false)
+      canvasRef.current?.startBossBattle(won, world.bossName)
     }
 
     try {
@@ -86,7 +107,13 @@ export default function LevelPage({ params }: PageProps) {
     } catch {
       // not signed in / offline — keep the optimistic local XP
     }
-  }, [world])
+  }, [world, completedQuests])
+
+  const handleBossResolved = useCallback((result: { won: boolean; worldId: string }) => {
+    // World progression on top of this result is Issue #5; for now surface
+    // the outcome and route the player back to the dashboard.
+    setBossResult({ won: result.won })
+  }, [])
 
   const handleQuestClose = useCallback(() => {
     // Closed without completing — resume the game, keep the rune active.
@@ -131,6 +158,7 @@ export default function LevelPage({ params }: PageProps) {
         levelId={levelId}
         onQuestTriggered={handleQuestTriggered}
         onXPUpdate={setXP}
+        onBossResolved={handleBossResolved}
       />
 
       {/* Quest Panel Overlay */}
@@ -141,6 +169,41 @@ export default function LevelPage({ params }: PageProps) {
             onComplete={handleQuestComplete}
             onClose={handleQuestClose}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Boss battle outcome */}
+      <AnimatePresence>
+        {bossResult && (
+          <motion.div
+            className="fixed inset-0 z-30 flex items-center justify-center bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="mx-4 max-w-md rounded-xl border border-brand-purple/40 bg-brand-dark-2 p-8 text-center"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            >
+              <div
+                className={`mb-3 font-pixel text-xl ${
+                  bossResult.won ? 'text-brand-gold-bright' : 'text-red-400'
+                }`}
+              >
+                {bossResult.won ? 'VICTORY!' : 'DEFEATED'}
+              </div>
+              <p className="mb-6 font-sans text-sm text-brand-gold/80">
+                {bossResult.won
+                  ? `You defeated ${world.bossName} and conquered ${world.title}!`
+                  : `${world.bossName} has bested you. Sharpen your knowledge and challenge the boss again.`}
+              </p>
+              <Link href="/dashboard" className="btn-pixel inline-block text-[10px]">
+                Return to Dashboard
+              </Link>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

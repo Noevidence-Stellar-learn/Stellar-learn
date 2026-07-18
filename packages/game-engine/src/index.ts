@@ -1,6 +1,7 @@
 export { BootScene } from './scenes/BootScene'
 export { WorldMapScene } from './scenes/WorldMapScene'
 export { LevelScene } from './scenes/LevelScene'
+export { BossScene } from './scenes/BossScene'
 export {
   DEFAULT_PHASER_CONFIG,
   GAME_WIDTH,
@@ -19,3 +20,4 @@ export {
 } from './config'
 export type { SheetAnim } from './config'
 export type { WorldNode } from './scenes/WorldMapScene'
+export type { BossSceneData } from './scenes/BossScene'
