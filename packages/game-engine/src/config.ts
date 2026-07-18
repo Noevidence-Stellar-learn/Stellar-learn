@@ -8,14 +8,71 @@ export const GAME_HEIGHT = 720
 export const TILE_SIZE = 64
 
 /**
- * Whether real pixel-art assets have been added under `apps/web/public/assets`.
+ * Manifest of the real pixel-art assets that exist under
+ * `apps/web/public/assets`. Scenes only request files listed here; anything
+ * not listed keeps its generated placeholder, so a missing asset can never
+ * 404 or crash Phaser with an empty animation.
  *
- * Until the art drop lands, the files don't exist, so requesting them produces
- * 404s and (for character spritesheets) empty animations that crash Phaser.
- * While this is `false`, scenes skip those network loads and render generated
- * placeholder textures instead. Flip to `true` once the PNG/JSON assets exist.
+ * When new art lands (see `apps/web/public/assets/sprites/README.md` and
+ * `ASSETS.md` for the required frame layouts), add its id to the matching
+ * list and the scenes pick it up — no other code changes needed.
  */
-export const ART_ASSETS_AVAILABLE = false
+export const ART_MANIFEST = {
+  characters: ['archer', 'mage', 'necromancer', 'paladin', 'rogue', 'warrior'],
+  enemies: ['doubter'],
+  bosses: ['doubt-wraith'],
+  tilesets: [] as string[],
+  ui: false,
+  effects: false,
+}
+
+/** One animation strip inside a fixed-grid spritesheet. */
+export interface SheetAnim {
+  start: number
+  end: number
+  frameRate: number
+  repeat: number
+}
+
+/**
+ * Frame layouts the spritesheets are authored against. These indices are the
+ * contract between the art (scripts/generate-sprites.mjs, external drops) and
+ * the animations the scenes create — keep all three in sync.
+ */
+export const CHARACTER_FRAME_SIZE = 128
+export const CHARACTER_ANIMS: Record<string, SheetAnim> = {
+  idle: { start: 0, end: 3, frameRate: 6, repeat: -1 },
+  run: { start: 8, end: 13, frameRate: 10, repeat: -1 },
+  jump: { start: 16, end: 19, frameRate: 10, repeat: 0 },
+  attack: { start: 24, end: 29, frameRate: 12, repeat: 0 },
+  death: { start: 32, end: 37, frameRate: 10, repeat: 0 },
+}
+
+export const ENEMY_FRAME_SIZE = 128
+export const ENEMY_ANIMS: Record<string, SheetAnim> = {
+  walk: { start: 0, end: 5, frameRate: 8, repeat: -1 },
+  death: { start: 8, end: 13, frameRate: 10, repeat: 0 },
+}
+
+export const BOSS_FRAME_SIZE = 256
+export const BOSS_ANIMS: Record<string, SheetAnim> = {
+  idle: { start: 0, end: 5, frameRate: 6, repeat: -1 },
+  attack: { start: 6, end: 11, frameRate: 10, repeat: 0 },
+  hurt: { start: 12, end: 17, frameRate: 12, repeat: 0 },
+  defeat: { start: 18, end: 23, frameRate: 8, repeat: 0 },
+}
+
+/** Boss spritesheet id per world (see ASSETS.md; consumed by Issue #4). */
+export const WORLD_BOSSES: Record<string, string> = {
+  'world-1-origin-plains': 'doubt-wraith',
+  'world-2-wallet-kingdom': 'key-crusher',
+  'world-3-asset-forge': 'trust-breaker',
+}
+
+/** Roaming enemy spritesheet ids per world. */
+export const WORLD_ENEMIES: Record<string, string[]> = {
+  'world-1-origin-plains': ['doubter'],
+}
 
 export const DEFAULT_PHASER_CONFIG: Omit<Phaser.Types.Core.GameConfig, 'scene' | 'parent'> = {
   type: Phaser.AUTO,

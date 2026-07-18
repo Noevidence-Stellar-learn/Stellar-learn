@@ -17,6 +17,7 @@
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "sprites:generate": "node scripts/generate-sprites.mjs",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "db:generate": "turbo db:generate",
     "db:push": "turbo db:push",

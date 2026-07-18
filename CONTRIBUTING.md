@@ -154,10 +154,15 @@ npm run test
 
 All required assets — sprites, tilesets, maps, UI, effects, audio — are spec'd
 with exact sizes, frame layouts, file paths and naming in
-[`ASSETS.md`](ASSETS.md). Drop finished files into `apps/web/public/assets/...`
-(folders are scaffolded) and flip `ART_ASSETS_AVAILABLE` in
-`packages/game-engine/src/config.ts`. **Only commit assets we may redistribute
-under MIT**, or link the source instead.
+[`ASSETS.md`](ASSETS.md) and
+[`apps/web/public/assets/sprites/README.md`](apps/web/public/assets/sprites/README.md).
+Drop finished files into `apps/web/public/assets/...` and list new
+character/enemy/boss ids in `ART_MANIFEST` in
+`packages/game-engine/src/config.ts` so the engine loads them. The current
+sprites are procedurally generated — `npm run sprites:generate` rebuilds them,
+and hand-drawn replacements matching the same frame layouts are very welcome.
+**Only commit assets we may redistribute under MIT**, or link the source
+instead.
 
 ### Adding a Game Scene
 
