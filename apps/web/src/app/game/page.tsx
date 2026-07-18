@@ -1,16 +1,13 @@
-import type { Metadata } from 'next'
-import { GameShell } from '@/components/ui/GameShell'
-
-export const metadata: Metadata = {
-  title: 'Stellar Learn — Game UI',
-  description:
-    'The Stellar Learn pixel-art game UI: main menu, character select, world map, gameplay HUD, quests and achievements.',
-}
+import { redirect } from 'next/navigation'
 
 /**
- * /game — the interactive pixel UI shell built from the Claude Design handoff.
- * Renders the full screen flow inside a scaled 1280×720 canvas.
+ * /game — canonical entry point into playable gameplay.
+ *
+ * The real game lives at /world/[worldId]/level/[levelId] (Phaser via
+ * GameCanvas). This route simply forwards players into World 1 so every
+ * "Play" path lands in an interactive level. The old static UI mockup that
+ * used to render here now lives at /design-preview.
  */
 export default function GamePage() {
-  return <GameShell />
+  redirect('/world/origin-plains/level/1')
 }

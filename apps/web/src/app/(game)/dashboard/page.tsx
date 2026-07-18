@@ -5,8 +5,8 @@ import { worlds } from '@stellar-learn/content'
 import { clerkEnabled } from '@/lib/auth'
 
 export default async function DashboardPage() {
-  // Without Clerk configured there is no auth session; point visitors to the
-  // publicly viewable game UI instead of crashing on currentUser().
+  // Without Clerk configured there is no auth session; send visitors straight
+  // into the playable game (via /game) instead of crashing on currentUser().
   if (!clerkEnabled) redirect('/game')
 
   const user = await currentUser()

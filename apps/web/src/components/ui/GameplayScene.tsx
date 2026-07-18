@@ -14,6 +14,14 @@ export function GameplayScene() {
         background: 'linear-gradient(#161235 0%, #1d1a40 38%, #20303a 70%, #24402a 100%)',
       }}
     >
+      {/* static-mockup label so this is never mistaken for the playable game */}
+      <div
+        className="absolute left-1/2 top-3 z-[6] -translate-x-1/2 rounded px-3 py-2 font-pixel text-[8px] tracking-[1px]"
+        style={{ background: 'rgba(7,7,26,.85)', color: '#ffd700', border: '1px solid #7a5a1a' }}
+      >
+        STATIC MOCKUP — PLAY AT /GAME
+      </div>
+
       {/* layered forest silhouettes */}
       <div
         className="absolute bottom-[120px] left-0 right-0 z-[1] h-[240px] opacity-90"
