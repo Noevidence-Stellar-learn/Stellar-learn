@@ -65,6 +65,15 @@ npm run dev
 # → http://localhost:3000
 ```
 
+### Routes
+
+| Route | What it is |
+| --- | --- |
+| `/world/[worldId]/level/[levelId]` | **The canonical play route.** Mounts the real Phaser game (`GameCanvas` → `LevelScene`), e.g. `/world/origin-plains/level/1`. |
+| `/game` | Convenience entry point — redirects into World 1's first level. |
+| `/dashboard` | World select for signed-in players; "Enter World" links into the play route. |
+| `/design-preview` | Static CSS mockup of the pixel UI (menu, map, HUD). A style reference only — **not playable**. |
+
 ---
 
 ## Contributing

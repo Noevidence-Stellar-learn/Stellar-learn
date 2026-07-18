@@ -24,6 +24,11 @@ const SCREENS: { id: Screen; label: string }[] = [
 /**
  * GameShell — the Stellar Learn pixel game-UI shell.
  *
+ * DESIGN PREVIEW ONLY. Every screen here (including GAMEPLAY) is a static CSS
+ * mockup used as a style reference — nothing is playable. The real game is
+ * the Phaser canvas at /world/[worldId]/level/[levelId] (canonical entry:
+ * /game). This shell is served at /design-preview.
+ *
  * Unlike the original handoff prototype (a fixed 1280×720 stage scaled with
  * `transform`), this is a *fluid* responsive layout: the cosmic viewport fills
  * the screen at any size and every screen reflows — from phones to ultrawide —
@@ -64,6 +69,20 @@ export function GameShell() {
         className="nav-scroll z-50 flex shrink-0 items-center gap-[6px] overflow-x-auto px-3 py-[10px] font-pixel sm:gap-2 sm:px-4"
         style={{ background: '#0a0a18', borderBottom: '1px solid #2a2a46' }}
       >
+        <span
+          className="shrink-0 rounded-[4px] px-[8px] py-[5px] text-[7px] tracking-[1px]"
+          style={{ background: '#3a2a10', color: '#ffd700', border: '1px solid #7a5a1a' }}
+        >
+          DESIGN PREVIEW
+        </span>
+        <a
+          href="/game"
+          className="shrink-0 rounded-[4px] px-[8px] py-[5px] text-[7px] tracking-[1px] no-underline"
+          style={{ background: '#0f2a2e', color: '#7df0ff', border: '1px solid #1a5a64' }}
+        >
+          PLAY THE REAL GAME
+        </a>
+        <span className="mx-[2px] h-[22px] w-px shrink-0 bg-[#2a2a46]" />
         <span className="hidden shrink-0 px-[6px] text-[7px] text-[#6a6a8a] sm:inline">SCREENS</span>
         {SCREENS.map((s) => (
           <ProtoBtn key={s.id} active={screen === s.id} onClick={() => goto(s.id)}>
