@@ -9,6 +9,8 @@ interface GameCanvasProps {
   characterId?: string
   onQuestTriggered: (questIndex: number) => void
   onXPUpdate: (xp: number) => void
+  /** Fired when the boss-battle cinematic finishes (Issue #4 → #5). */
+  onBossResolved?: (result: { won: boolean; worldId: string }) => void
 }
 
 export interface GameCanvasHandle {
@@ -16,6 +18,12 @@ export interface GameCanvasHandle {
   questClosed: (questIndex: number, completed: boolean) => void
   /** Push already-completed quest indices (persisted progress) into the game. */
   syncCompletedQuests: (indices: number[]) => void
+  /**
+   * Start the world-finale boss battle. `won` is the outcome the quest
+   * pass/fail results dictate; the level scene only honors this after every
+   * rune of the world is completed.
+   */
+  startBossBattle: (won: boolean, bossName?: string) => void
 }
 
 /**
@@ -23,7 +31,7 @@ export interface GameCanvasHandle {
  * Phaser is dynamically imported to avoid SSR issues (no window on server).
  */
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
-  { worldId, levelId, characterId = 'warrior', onQuestTriggered, onXPUpdate },
+  { worldId, levelId, characterId = 'warrior', onQuestTriggered, onXPUpdate, onBossResolved },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -33,6 +41,17 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   // emitted before 'level-ready' would be lost, so buffer the progress sync.
   const levelReadyRef = useRef(false)
   const pendingSyncRef = useRef<number[] | null>(null)
+  // Callbacks live in refs so a re-render that recreates them (e.g. the page
+  // tracking completed quests) never tears down and reboots the Phaser game —
+  // that would wipe rune state and abort a boss transition mid-flight.
+  const onQuestTriggeredRef = useRef(onQuestTriggered)
+  const onXPUpdateRef = useRef(onXPUpdate)
+  const onBossResolvedRef = useRef(onBossResolved)
+  useEffect(() => {
+    onQuestTriggeredRef.current = onQuestTriggered
+    onXPUpdateRef.current = onXPUpdate
+    onBossResolvedRef.current = onBossResolved
+  })
 
   useImperativeHandle(ref, () => ({
     questClosed(questIndex: number, completed: boolean) {
@@ -45,6 +64,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         pendingSyncRef.current = indices
       }
     },
+    startBossBattle(won: boolean, bossName?: string) {
+      gameRef.current?.events.emit('boss-start', { won, bossName })
+    },
   }))
 
   useEffect(() => {
@@ -54,14 +76,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     const initGame = async () => {
       const Phaser = (await import('phaser')).default
-      const { BootScene, WorldMapScene, LevelScene, DEFAULT_PHASER_CONFIG } = await import(
+      const { BootScene, WorldMapScene, LevelScene, BossScene, DEFAULT_PHASER_CONFIG } = await import(
         '@stellar-learn/game-engine'
       )
 
       game = new Phaser.Game({
         ...DEFAULT_PHASER_CONFIG,
         parent: containerRef.current!,
-        scene: [BootScene, WorldMapScene, LevelScene],
+        scene: [BootScene, WorldMapScene, LevelScene, BossScene],
       })
 
       // Tell BootScene to boot straight into the level (set before boot runs)
@@ -70,11 +92,15 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       game.registry.set('bootData', { worldId, levelId, characterId })
 
       game.events.on('quest-triggered', ({ questIndex }: { questIndex: number }) => {
-        onQuestTriggered(questIndex)
+        onQuestTriggeredRef.current(questIndex)
       })
 
       game.events.on('xp-updated', (xp: number) => {
-        onXPUpdate(xp)
+        onXPUpdateRef.current(xp)
+      })
+
+      game.events.on('boss-resolved', (result: { won: boolean; worldId: string }) => {
+        onBossResolvedRef.current?.(result)
       })
 
       game.events.on('level-ready', () => {
@@ -99,7 +125,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       gameRef.current = null
       levelReadyRef.current = false
     }
-  }, [worldId, levelId, characterId, onQuestTriggered, onXPUpdate])
+  }, [worldId, levelId, characterId])
 
   return (
     <div className="game-canvas-container h-[100svh] min-h-[420px] w-full">
