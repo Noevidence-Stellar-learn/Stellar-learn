@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { ART_ASSETS_AVAILABLE, ASSET_KEYS } from '../config'
+import { ART_MANIFEST, ASSET_KEYS } from '../config'
 
 /**
  * BootScene — first scene loaded.
@@ -14,22 +14,22 @@ export class BootScene extends Phaser.Scene {
     // Progress bar while assets load
     this.createLoadingBar()
 
-    // Skip art loads until the asset drop lands — otherwise these 404.
-    if (!ART_ASSETS_AVAILABLE) return
+    // Only request asset groups the ART_MANIFEST says exist — otherwise 404.
+    if (ART_MANIFEST.ui) {
+      this.load.image(ASSET_KEYS.UI_XP_BAR, '/assets/ui/xp-bar.png')
+      this.load.image(ASSET_KEYS.UI_HEALTH_BAR, '/assets/ui/health-bar.png')
+    }
 
-    // UI assets (always needed)
-    this.load.image(ASSET_KEYS.UI_XP_BAR, '/assets/ui/xp-bar.png')
-    this.load.image(ASSET_KEYS.UI_HEALTH_BAR, '/assets/ui/health-bar.png')
-
-    // Particle effects
-    this.load.spritesheet(ASSET_KEYS.FX_COIN, '/assets/effects/coin.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    })
-    this.load.spritesheet(ASSET_KEYS.FX_LEVELUP, '/assets/effects/levelup.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-    })
+    if (ART_MANIFEST.effects) {
+      this.load.spritesheet(ASSET_KEYS.FX_COIN, '/assets/effects/coin.png', {
+        frameWidth: 32,
+        frameHeight: 32,
+      })
+      this.load.spritesheet(ASSET_KEYS.FX_LEVELUP, '/assets/effects/levelup.png', {
+        frameWidth: 64,
+        frameHeight: 64,
+      })
+    }
   }
 
   create() {

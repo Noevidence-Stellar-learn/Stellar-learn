@@ -1,5 +1,9 @@
 # Pixel-art assets
 
+> In-game spritesheets (characters, enemies, bosses) live under
+> [`sprites/`](sprites/) — see [`sprites/README.md`](sprites/README.md) for
+> their exact grid layouts. The table below covers the static UI mockup slots.
+
 Drop real PNG sprites here to replace the labelled placeholder slots used by
 the game UI (`<SpriteSlot>`). The UI is laid out at native 1x and rendered at
 2x via `image-rendering: pixelated`, so export art at the native sizes below.

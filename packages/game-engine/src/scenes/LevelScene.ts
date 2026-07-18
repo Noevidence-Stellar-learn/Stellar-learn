@@ -1,5 +1,17 @@
 import Phaser from 'phaser'
-import { ART_ASSETS_AVAILABLE, TILE_SIZE } from '../config'
+import {
+  ART_MANIFEST,
+  BOSS_ANIMS,
+  BOSS_FRAME_SIZE,
+  CHARACTER_ANIMS,
+  CHARACTER_FRAME_SIZE,
+  ENEMY_ANIMS,
+  ENEMY_FRAME_SIZE,
+  TILE_SIZE,
+  WORLD_BOSSES,
+  WORLD_ENEMIES,
+  type SheetAnim,
+} from '../config'
 
 /**
  * LevelScene — the main 2D platformer level.
@@ -38,19 +50,39 @@ export class LevelScene extends Phaser.Scene {
   }
 
   preload() {
-    // Skip art loads until the asset drop lands — otherwise these 404 and the
-    // missing character spritesheet produces empty animations that crash on play.
-    if (!ART_ASSETS_AVAILABLE) return
-
+    // Only request assets the ART_MANIFEST says exist — anything missing keeps
+    // its generated placeholder instead of 404ing or crashing on empty anims.
     const characterId = this.registry.get('characterId') as string
-    this.load.spritesheet(`char-${characterId}`, `/assets/sprites/characters/${characterId}.png`, {
-      frameWidth: 128,
-      frameHeight: 128,
-    })
+    if (ART_MANIFEST.characters.includes(characterId)) {
+      this.load.spritesheet(`char-${characterId}`, `/assets/sprites/characters/${characterId}.png`, {
+        frameWidth: CHARACTER_FRAME_SIZE,
+        frameHeight: CHARACTER_FRAME_SIZE,
+      })
+    }
 
     const worldId = this.registry.get('worldId') as string
-    this.load.image(`tileset-${worldId}`, `/assets/tilesets/${worldId}.png`)
-    this.load.tilemapTiledJSON(`map-${worldId}`, `/assets/maps/${worldId}.json`)
+    if (ART_MANIFEST.tilesets.includes(worldId)) {
+      this.load.image(`tileset-${worldId}`, `/assets/tilesets/${worldId}.png`)
+      this.load.tilemapTiledJSON(`map-${worldId}`, `/assets/maps/${worldId}.json`)
+    }
+
+    // This world's boss + enemies, so their animations are ready for the
+    // boss-battle and hazard work (Issue #4) without another load pass.
+    const bossId = WORLD_BOSSES[worldId]
+    if (bossId && ART_MANIFEST.bosses.includes(bossId)) {
+      this.load.spritesheet(`boss-${bossId}`, `/assets/sprites/bosses/boss-${bossId}.png`, {
+        frameWidth: BOSS_FRAME_SIZE,
+        frameHeight: BOSS_FRAME_SIZE,
+      })
+    }
+    for (const enemyId of WORLD_ENEMIES[worldId] ?? []) {
+      if (ART_MANIFEST.enemies.includes(enemyId)) {
+        this.load.spritesheet(`enemy-${enemyId}`, `/assets/sprites/enemies/enemy-${enemyId}.png`, {
+          frameWidth: ENEMY_FRAME_SIZE,
+          frameHeight: ENEMY_FRAME_SIZE,
+        })
+      }
+    }
   }
 
   create() {
@@ -146,25 +178,33 @@ export class LevelScene extends Phaser.Scene {
 
   private createAnimations() {
     const characterId = this.registry.get('characterId') as string
-    const key = `char-${characterId}`
+    const worldId = this.registry.get('worldId') as string
 
-    // A multi-frame spritesheet is required. With only a single-frame
-    // placeholder (no art yet) we skip animations and show the static sprite —
-    // creating zero-frame animations would crash Phaser when played.
-    if (!this.textures.exists(key) || this.textures.get(key).frameTotal <= 1) return
+    this.createSheetAnimations(`char-${characterId}`, characterId, CHARACTER_ANIMS)
 
-    const anims = [
-      { key: 'idle', frames: { start: 0, end: 3 }, repeat: -1, frameRate: 6 },
-      { key: 'run', frames: { start: 8, end: 13 }, repeat: -1, frameRate: 10 },
-      { key: 'jump', frames: { start: 16, end: 19 }, repeat: 0, frameRate: 10 },
-      { key: 'attack', frames: { start: 24, end: 29 }, repeat: 0, frameRate: 12 },
-    ]
+    // Boss/enemy animations for this world (played by the boss battle and
+    // hazards — Issue #4). Same guard: only when the sheet actually loaded.
+    const bossId = WORLD_BOSSES[worldId]
+    if (bossId) this.createSheetAnimations(`boss-${bossId}`, `boss-${bossId}`, BOSS_ANIMS)
+    for (const enemyId of WORLD_ENEMIES[worldId] ?? []) {
+      this.createSheetAnimations(`enemy-${enemyId}`, `enemy-${enemyId}`, ENEMY_ANIMS)
+    }
+  }
 
-    anims.forEach(({ key: animKey, frames, repeat, frameRate }) => {
-      if (!this.anims.exists(`${characterId}-${animKey}`)) {
+  /**
+   * Register `<prefix>-<anim>` animations for a loaded spritesheet.
+   * A multi-frame spritesheet is required. With only a single-frame
+   * placeholder (no art yet) we skip animations and show the static sprite —
+   * creating zero-frame animations would crash Phaser when played.
+   */
+  private createSheetAnimations(textureKey: string, prefix: string, anims: Record<string, SheetAnim>) {
+    if (!this.textures.exists(textureKey) || this.textures.get(textureKey).frameTotal <= 1) return
+
+    Object.entries(anims).forEach(([name, { start, end, frameRate, repeat }]) => {
+      if (!this.anims.exists(`${prefix}-${name}`)) {
         this.anims.create({
-          key: `${characterId}-${animKey}`,
-          frames: this.anims.generateFrameNumbers(key, frames),
+          key: `${prefix}-${name}`,
+          frames: this.anims.generateFrameNumbers(textureKey, { start, end }),
           frameRate,
           repeat,
         })
@@ -232,6 +272,11 @@ export class LevelScene extends Phaser.Scene {
     // already screen-sized, so leave it at 1× to keep its body aligned.
     const isPlaceholder = this.textures.get(key).frameTotal <= 1
     this.player.setScale(isPlaceholder ? 1 : 0.5)
+    if (!isPlaceholder) {
+      // Collide with the hero's torso, not the transparent frame margins or
+      // the weapon reach (frame coordinates; Phaser applies the sprite scale).
+      this.player.body.setSize(48, 114).setOffset(40, 10)
+    }
     this.player.setDepth(5)
 
     const groundLayer = this.registry.get('groundLayer')
