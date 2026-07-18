@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { GameCanvas } from '@/components/game/GameCanvas'
+import { GameCanvas, type GameCanvasHandle } from '@/components/game/GameCanvas'
 import { QuestPanel } from '@/components/game/QuestPanel'
 import { worlds } from '@stellar-learn/content'
 import type { Quest } from '@stellar-learn/content'
@@ -16,6 +16,7 @@ export default function LevelPage({ params }: PageProps) {
   const [activeQuest, setActiveQuest] = useState<Quest | null>(null)
   const [xp, setXP] = useState(0)
   const [completedQuests, setCompletedQuests] = useState<Set<string>>(new Set())
+  const canvasRef = useRef<GameCanvasHandle>(null)
 
   const world = worlds.find((w) => w.slug === worldId)
 
@@ -28,11 +29,19 @@ export default function LevelPage({ params }: PageProps) {
         if (cancelled || !data) return
         if (typeof data.xp === 'number') setXP(data.xp)
         if (Array.isArray(data.progress)) {
-          setCompletedQuests(
-            new Set(
-              data.progress.filter((p) => p.status === 'COMPLETED').map((p) => p.questId)
-            )
+          const completed = new Set(
+            data.progress.filter((p) => p.status === 'COMPLETED').map((p) => p.questId)
           )
+          setCompletedQuests(completed)
+
+          // Retire already-completed runes in the game so they can't reopen.
+          const currentWorld = worlds.find((w) => w.slug === worldId)
+          const completedIndices = (currentWorld?.quests ?? [])
+            .map((quest, index) => (completed.has(quest.id) ? index : -1))
+            .filter((index) => index !== -1)
+          if (completedIndices.length > 0) {
+            canvasRef.current?.syncCompletedQuests(completedIndices)
+          }
         }
       })
       .catch(() => {
@@ -41,7 +50,7 @@ export default function LevelPage({ params }: PageProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [worldId])
 
   const handleQuestTriggered = useCallback(
     (questIndex: number) => {
@@ -58,6 +67,12 @@ export default function LevelPage({ params }: PageProps) {
     setActiveQuest(null)
     setXP((prev) => prev + xpEarned) // optimistic; reconciled with server below
 
+    // Resume the game and retire the completed rune.
+    const questIndex = world?.quests.findIndex((q) => q.id === questId) ?? -1
+    if (questIndex !== -1) {
+      canvasRef.current?.questClosed(questIndex, true)
+    }
+
     try {
       const res = await fetch('/api/progress', {
         method: 'POST',
@@ -71,11 +86,18 @@ export default function LevelPage({ params }: PageProps) {
     } catch {
       // not signed in / offline — keep the optimistic local XP
     }
-  }, [])
+  }, [world])
 
   const handleQuestClose = useCallback(() => {
+    // Closed without completing — resume the game, keep the rune active.
+    const questIndex = activeQuest
+      ? (world?.quests.findIndex((q) => q.id === activeQuest.id) ?? -1)
+      : -1
+    if (questIndex !== -1) {
+      canvasRef.current?.questClosed(questIndex, false)
+    }
     setActiveQuest(null)
-  }, [])
+  }, [activeQuest, world])
 
   if (!world) {
     return (
@@ -104,6 +126,7 @@ export default function LevelPage({ params }: PageProps) {
 
       {/* Game Canvas */}
       <GameCanvas
+        ref={canvasRef}
         worldId={worldId}
         levelId={levelId}
         onQuestTriggered={handleQuestTriggered}
