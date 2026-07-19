@@ -1,0 +1,29 @@
+{
+  "notes": "Character roster manifest. `file` is the gameplay spritesheet Phaser loads via ART_MANIFEST.characters (packages/game-engine/src/config.ts) — all 6 are already real, committed art (see apps/web/public/assets/sprites/README.md). `portrait` is a single-frame icon used for UI (signup assignment, dashboard). The signup flow picks a random entry from this list.",
+  "spriteSpec": {
+    "frameSize": "128x128",
+    "grid": "8 cols x 5 rows (1024x640 sheet)",
+    "animations": {
+      "idle": "0-3",
+      "run": "8-13",
+      "jump": "16-19",
+      "attack": "24-29",
+      "death": "32-37"
+    }
+  },
+  "portraitSpec": {
+    "size": "single frame, square",
+    "usage": "character-select, dashboard, HUD avatar"
+  },
+  "characters": [
+    { "id": "warrior", "name": "Warrior", "file": "warrior.png", "assetKey": "char-warrior", "portrait": "portrait-warrior.png" },
+    { "id": "mage", "name": "Mage", "file": "mage.png", "assetKey": "char-mage", "portrait": "portrait-mage.png" },
+    { "id": "archer", "name": "Archer", "file": "archer.png", "assetKey": "char-archer", "portrait": "portrait-archer.png" },
+    { "id": "rogue", "name": "Rogue", "file": "rogue.png", "assetKey": "char-rogue", "portrait": "portrait-rogue.png" },
+    { "id": "paladin", "name": "Paladin", "file": "paladin.png", "assetKey": "char-paladin", "portrait": "portrait-paladin.png" },
+    { "id": "necromancer", "name": "Necromancer", "file": "necromancer.png", "assetKey": "char-necromancer", "portrait": "portrait-necromancer.png" }
+  ],
+  "sparePortraits": [
+    "spare-1.png", "spare-2.png", "spare-3.png", "spare-4.png", "spare-5.png", "spare-6.png"
+  ]
+}
