@@ -23,3 +23,14 @@ animation) compatible with Phaser's `this.load.spritesheet()`. Naming follows
 `char-validator_idle.png`, `world-1_tileset_ground.png`, `ui_xp-bar.png`.
 
 Colours must match the brand palette exactly (see `tailwind.config.ts`).
+
+## Manifests
+
+Some folders carry a JSON manifest alongside the art — add an entry there
+whenever you drop in a new file, or the game won't know it exists:
+
+| Folder | Manifest | Purpose |
+| --- | --- | --- |
+| `sprites/characters/` | `characters.json` | Playable roster. New signups are randomly assigned one entry from this list (`apps/web/src/lib/characters.ts`). |
+| `sprites/bosses/` | `bosses.json` | One boss per world, all 6 worlds. |
+| `animations/world-clear/` | `world-clear.json` | Plays once a world's boss is defeated. |
