@@ -1,0 +1,48 @@
+{
+  "notes": "Played once the boss of a world is defeated (LevelScene emits 'boss-resolved' with won: true; see issue #4). Drop worldclear-<slug>.png into this folder matching an entry below. Falls back to no animation (an XP/level-up toast only) for any world without an entry here.",
+  "spriteSpec": {
+    "frameSize": "256x256",
+    "grid": "8 cols x 1 row (2048x256 sheet)",
+    "animation": {
+      "play": "0-7"
+    }
+  },
+  "animations": [
+    {
+      "worldSlug": "origin-plains",
+      "worldNumber": 1,
+      "file": "worldclear-origin-plains.png",
+      "assetKey": "worldclear-origin-plains"
+    },
+    {
+      "worldSlug": "wallet-kingdom",
+      "worldNumber": 2,
+      "file": "worldclear-wallet-kingdom.png",
+      "assetKey": "worldclear-wallet-kingdom"
+    },
+    {
+      "worldSlug": "asset-forge",
+      "worldNumber": 3,
+      "file": "worldclear-asset-forge.png",
+      "assetKey": "worldclear-asset-forge"
+    },
+    {
+      "worldSlug": "trading-bazaar",
+      "worldNumber": 4,
+      "file": "worldclear-trading-bazaar.png",
+      "assetKey": "worldclear-trading-bazaar"
+    },
+    {
+      "worldSlug": "payment-realm",
+      "worldNumber": 5,
+      "file": "worldclear-payment-realm.png",
+      "assetKey": "worldclear-payment-realm"
+    },
+    {
+      "worldSlug": "soroban-citadel",
+      "worldNumber": 6,
+      "file": "worldclear-soroban-citadel.png",
+      "assetKey": "worldclear-soroban-citadel"
+    }
+  ]
+}
