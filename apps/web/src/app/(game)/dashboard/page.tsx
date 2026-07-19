@@ -1,8 +1,11 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { worlds } from '@stellar-learn/content'
+import { prisma } from '@stellar-learn/database'
 import { clerkEnabled } from '@/lib/auth'
+import { characterDisplayName, characterPortraitPath } from '@/lib/characters'
 
 export default async function DashboardPage() {
   // Without Clerk configured there is no auth session; send visitors straight
@@ -12,18 +15,34 @@ export default async function DashboardPage() {
   const user = await currentUser()
   if (!user) redirect('/sign-in')
 
+  const dbUser = await prisma.user.findUnique({ where: { clerkId: user.id } })
+
   return (
     <div className="min-h-screen bg-brand-dark px-8 py-12">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="font-pixel text-xl text-brand-gold">
-              Welcome back, {user.firstName ?? 'Adventurer'}!
-            </h1>
-            <p className="mt-2 font-sans text-sm text-brand-gold/60">
-              Continue your Stellar journey
-            </p>
+          <div className="flex items-center gap-4">
+            {dbUser && (
+              <Image
+                src={characterPortraitPath(dbUser.characterId)}
+                alt={characterDisplayName(dbUser.characterId)}
+                width={56}
+                height={56}
+                className="rounded-lg border border-brand-dark-4"
+                style={{ imageRendering: 'pixelated' }}
+              />
+            )}
+            <div>
+              <h1 className="font-pixel text-xl text-brand-gold">
+                Welcome back, {user.firstName ?? 'Adventurer'}!
+              </h1>
+              <p className="mt-2 font-sans text-sm text-brand-gold/60">
+                {dbUser
+                  ? `Playing as ${characterDisplayName(dbUser.characterId)} — continue your Stellar journey`
+                  : 'Continue your Stellar journey'}
+              </p>
+            </div>
           </div>
           <div className="text-right">
             <div className="font-pixel text-2xl text-brand-gold-bright">0 XP</div>
