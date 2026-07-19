@@ -26,6 +26,7 @@
     "tailwind-merge": "^2.3.0",
     "lucide-react": "^0.400.0",
     "uuid": "^9.0.1",
+    "svix": "^1.24.0",
     "@stellar-learn/database": "*",
     "@stellar-learn/stellar": "*",
     "@stellar-learn/content": "*",
