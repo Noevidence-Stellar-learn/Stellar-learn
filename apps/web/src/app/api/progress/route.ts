@@ -2,6 +2,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@stellar-learn/database'
 import { clerkEnabled } from '@/lib/auth'
+import { pickRandomCharacter } from '@/lib/characters'
 import { loggerFromHeaders } from '@/lib/correlation'
 import { updateLeaderboard } from '@/lib/leaderboard'
 
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
     const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? `${clerkId}@noemail.local`
     const username = clerkUser?.username ?? `player_${clerkId.slice(-8)}`
 
+    // Normally the Clerk webhook (api/webhooks/clerk) has already created this
+    // row with a random character at signup; this upsert only creates it here
+    // as a fallback (e.g. the webhook isn't configured in local dev).
     const user = await prisma.user.upsert({
       where: { clerkId },
       update: { lastActiveAt: new Date() },
@@ -59,6 +63,7 @@ export async function POST(request: Request) {
         email,
         username,
         avatarUrl: clerkUser?.imageUrl ?? null,
+        characterId: pickRandomCharacter(),
         lastActiveAt: new Date(),
       },
     })
